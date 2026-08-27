@@ -1,0 +1,17 @@
+{
+  "name": "ЦЕХ — помощник консультанта",
+  "short_name": "ЦЕХ",
+  "description": "Подбор инструмента и аргументация для продавца-консультанта отдела инструментов",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16181A",
+  "theme_color": "#16181A",
+  "lang": "ru",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
