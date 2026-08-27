@@ -257,6 +257,12 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .verbox{font-family:var(--mono);font-size:12px;background:var(--card);border:1px solid var(--line);
   padding:12px;border-radius:2px;line-height:1.7}
 .verbox .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+
+.lm{font-family:var(--mono);font-size:14px;background:var(--ink);color:var(--tape);padding:3px 7px;border-radius:2px;letter-spacing:.06em}
+.minibtn{display:inline-block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  padding:8px 10px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:2px;text-decoration:none}
+.minibtn.del{color:var(--ink-3)}
+.codecard{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--tape);padding:12px;margin-bottom:7px;border-radius:2px}
 .hide{display:none}
 .foot{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:center;padding:26px 0 10px;line-height:1.6}
 @media(prefers-reduced-motion:no-preference){
@@ -2149,6 +2155,39 @@ const SITE_SECTIONS = [
 ];
 const siteSearch = q => SITE + "/search/?q=" + encodeURIComponent(q);
 
+/* Умная ссылка: подставляем в поиск то, что реально посчитали */
+function siteSmart(f, r){
+  const clean = s => String(s||"").replace(/<[^>]+>/g,"")
+    .replace(/[·•]/g," ").replace(/\s+/g," ").trim();
+  /* берём только первый смысловой кусок заголовка — поиск на сайте не любит длинные фразы */
+  /* база = заголовок без хвоста после запятой, если хвост дублирует цифры */
+  let base = clean(r.head).split(/[:(]/)[0].trim();
+  const cut = base.search(/,(?!\d)/);
+  if(cut>0) base = base.slice(0,cut).trim();
+  base = base.split(" ").slice(0,4).join(" ");
+  const specs = (clean(r.head)+" "+clean(r.sub))
+    .match(/[\d]+([.,][\d]+)?\s?(кВт|Вт|л\/мин|л\/ч|бар|мм|А|Дж|Нм|В)/gi) || [];
+  const norm = s => s.toLowerCase().replace(/\s+/g,"").replace(/,/g,".");
+  const inBase = norm(base);
+  const uniq = [];
+  specs.forEach(s=>{ const v=s.replace(/\s+/g,"");
+    const digits = v.replace(/[^\d]/g,"");
+    if(uniq.indexOf(v)<0 && inBase.indexOf(norm(v))<0
+       && !(digits && inBase.replace(/[^\d]/g,"").indexOf(digits)>=0)) uniq.push(v); });
+  let q = (base + " " + uniq.slice(0,2).join(" ")).trim();
+  if(q.replace(/\s/g,"").length < 5) q = f.site || f.title;
+  return siteSearch(q);
+}
+
+/* ---------- ЛМ-коды: своя база под конкретный зал ---------- */
+function getCodes(){ try{ return JSON.parse(store.get("codes")||"[]"); }catch(e){ return []; } }
+function setCodes(v){ store.set("codes", JSON.stringify(v)); }
+function codeKey(flowId, head){ return flowId + "|" + String(head).replace(/\s+/g," ").trim(); }
+function codesFor(flowId, head){
+  const k = codeKey(flowId, head);
+  return getCodes().filter(c => c.k===k || (c.all && c.f===flowId));
+}
+
 /* ==================== НОВЫЕ ШПАРГАЛКИ ==================== */
 REF.push(
 {id:"fit",t:"Фитинги: шпаргалка на память",tags:"фитинг быстросъём рапид резьба шланг фум ниппель розетка пневмо",
@@ -3496,7 +3535,7 @@ function topUsed(n){
 
 /* ============ ОБМЕН НАСТРОЙКАМИ ============ */
 function exportData(){
-  const data={v:1,aisle:{},notes:store.get("notes")||"",cases:getCases()};
+  const data={v:2,aisle:{},notes:store.get("notes")||"",cases:getCases(),codes:getCodes()};
   ZONES.forEach(z=>{ const v=store.get("aisle:"+z); if(v) data.aisle[z]=v; });
   try{ return btoa(unescape(encodeURIComponent(JSON.stringify(data)))); }
   catch(e){ return JSON.stringify(data); }
@@ -3508,6 +3547,11 @@ function importData(code){
   if(!obj || typeof obj!=="object") return false;
   if(obj.aisle) Object.keys(obj.aisle).forEach(z=>store.set("aisle:"+z,obj.aisle[z]));
   if(obj.notes) store.set("notes",obj.notes);
+  if(Array.isArray(obj.codes)){
+    const cur=getCodes(), ids=new Set(cur.map(c=>c.id));
+    obj.codes.forEach(c=>{ if(!ids.has(c.id)) cur.push(c); });
+    setCodes(cur);
+  }
   if(Array.isArray(obj.cases)){
     const cur=getCases(), keys=new Set(cur.map(c=>c.t));
     obj.cases.forEach(c=>{ if(!keys.has(c.t)) cur.push(c); });
@@ -4088,7 +4132,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "13";
+const APP_VERSION = "14";
 const APP_DATE = "27.08.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -4433,7 +4477,7 @@ Object.assign(CARE,{
 /* ============ ИНТЕРФЕЙС ============ */
 const app = document.getElementById("app");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], short:(store.get("short")==="1"), aisleQ:""};
+const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], addCode:false, short:(store.get("short")==="1"), aisleQ:""};
 
 function go(patch){ Object.assign(S,patch); render(); window.scrollTo({top:0,behavior:"instant"}); }
 function selTab(name){ document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x.dataset.tab===name?"true":"false")); }
@@ -4607,10 +4651,40 @@ function viewResult(){
   h += block("","Если начнёт возражать",
     objs.map(o=>`<div class="pickrow"><div class="pn">${esc(o[0])}</div><div class="pw">${o[1]}</div></div>`).join(""));
 
+  const myCodes = codesFor(S.flow, r.head);
+  h += `<div class="block pick"><h3>Товары в вашем зале</h3>
+    ${myCodes.length ? myCodes.map((c,i)=>`<div class="pickrow">
+        <div class="pn">${esc(c.n)}${c.p?` · <span style="font-family:var(--mono)">${esc(c.p)}</span>`:""}</div>
+        <div class="pw"><span class="lm">ЛМ ${esc(c.c)}</span>${c.all?' <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3)">вся категория</span>':""}
+          ${c.note?"<br>"+esc(c.note):""}</div>
+        <div style="margin-top:7px;display:flex;gap:6px">
+          <a class="minibtn" href="${SITE}/search/?q=${encodeURIComponent(c.c)}" target="_blank" rel="noopener">Открыть по коду</a>
+          <button class="minibtn del" data-delcode="${esc(c.id)}">Убрать</button>
+        </div></div>`).join("")
+      : '<div class="note">Кодов пока нет. Пройдите вдоль стеллажа и добавьте те модели, что реально стоят — приложение будет показывать их именно на этом результате.</div>'}
+    ${S.addCode ? `<div class="caseform" style="margin-top:12px">
+        <input id="cdName" placeholder="Название модели, как на ценнике" autocomplete="off">
+        <input id="cdCode" placeholder="ЛМ-код (цифры с ценника)" inputmode="numeric" autocomplete="off">
+        <input id="cdPrice" placeholder="Цена, необязательно" inputmode="numeric" autocomplete="off">
+        <input id="cdNote" placeholder="Заметка: полка, что сказать, необязательно" autocomplete="off">
+        <label style="display:flex;gap:9px;align-items:center;padding:9px 0;font-size:14.5px">
+          <input type="checkbox" id="cdAll" style="width:22px;height:22px;accent-color:var(--tape)">
+          Показывать во всей категории, а не только на этом результате
+        </label>
+        <div class="btnrow" style="margin-top:4px">
+          <button class="btn primary" id="cdSave">Сохранить</button>
+          <button class="btn" id="cdCancel">Отмена</button>
+        </div>
+        <div class="saved" id="cdMsg"></div>
+      </div>`
+    : `<div class="btnrow" style="margin-top:10px"><button class="btn dark" id="cdAdd">Добавить код сюда</button></div>`}
+    <div class="note" style="margin-top:10px;font-size:12.5px">Привязка к результату: <b>${esc(r.head)}</b></div>
+  </div>`;
+
   h += `<div class="script" style="margin-top:8px"><span class="rl">Можно сказать так</span>${r.script}</div>
-  <a class="card ref" style="text-decoration:none;margin-top:10px" href="${siteSearch(f.site||f.title)}" target="_blank" rel="noopener">
-    <div class="ct">Открыть на сайте</div>
-    <div class="cd">Проверить наличие, артикулы и цены в Саранске</div></a>
+  <a class="card ref" style="text-decoration:none;margin-top:10px" href="${siteSmart(f, r)}" target="_blank" rel="noopener">
+    <div class="ct">Открыть на сайте с этими параметрами</div>
+    <div class="cd">Поиск уже подставлен: ${esc(r.head)}. Наличие и цены — в Саранске</div></a>
   <div class="closing"><h3>Перед тем как отпустить клиента</h3>
     ${CLOSING.map((c,i)=>`<div class="ci ${S.close.indexOf(i)>=0?"on":""}" data-close-i="${i}">
       <div class="cin">${esc(c[0])}</div><div class="ciw">${esc(c[1])}</div></div>`).join("")}</div>
@@ -4751,6 +4825,23 @@ function viewMap(){
   <textarea id="notes" placeholder="Например: коронки 68 мм — верхняя полка над бурами. Фитинги — торец стеллажа с компрессорами.">${esc(store.get("notes")||"")}</textarea>
   <div class="saved" id="saved2"></div>
 
+  <div class="eyebrow">ЛМ-коды вашего зала</div>
+  <div class="note">Коды добавляются прямо в конце подбора — кнопка «Добавить код сюда». Каждый привязывается к конкретному результату, поэтому под 3 кВт и под 5 кВт покажутся разные модели. Здесь только просмотр и удаление.</div>
+  <div style="height:8px"></div>
+  ${(()=>{ const cs=getCodes();
+    if(!cs.length) return '<div class="note">Пока пусто. Пройдите вдоль аллеи с телефоном и внесите то, что реально стоит на полке.</div>';
+    const by={}; cs.forEach(c=>{ (by[c.cat]=by[c.cat]||[]).push(c); });
+    return Object.keys(by).map(cat=>`<div class="eyebrow">${esc(cat)} · ${by[cat].length}</div>`
+      + by[cat].map(c=>`<div class="codecard">
+          <div style="font-weight:700;font-size:15.5px">${esc(c.n)}${c.p?" · "+esc(c.p):""}</div>
+          <div style="margin-top:6px"><span class="lm">ЛМ ${esc(c.c)}</span></div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:7px">
+            ${c.all?"вся категория":esc(c.head)}</div>
+          ${c.note?`<div style="font-size:13.5px;color:var(--ink-2);margin-top:5px">${esc(c.note)}</div>`:""}
+          <button class="minibtn del" data-delcode="${esc(c.id)}" style="margin-top:9px">Удалить</button>
+        </div>`).join("")).join("");
+  })()}
+
   <div class="eyebrow">Кейсы отдела</div>
   <div class="note">Писать руками не обязательно. В конце любого подбора есть кнопка «Запомнить случай» — она сама запишет вопрос, ответ и комплект. Здесь можно дописать одну строку или удалить лишнее. Кейсы находятся обычным поиском.</div>
   <div style="height:8px"></div>
@@ -4770,7 +4861,7 @@ function viewMap(){
   <div class="verbox">
     <span class="dot" style="background:var(--ok)"></span>Версия приложения: <b>${APP_VERSION}</b> от ${APP_DATE}<br>
     <span class="dot" id="netDot" style="background:var(--ink-3)"></span><span id="netTxt">Проверяю связь…</span><br>
-    Категорий: ${Object.keys(FLOWS).length} · шпаргалок: ${REF.length} · марок: ${BRANDS.length}
+    Категорий: ${Object.keys(FLOWS).length} · шпаргалок: ${REF.length} · марок: ${BRANDS.length}<br>Своих ЛМ-кодов внесено: <b>${getCodes().length}</b>
   </div>
   <div style="height:8px"></div>
   <div class="note">Если у коллеги другая цифра версии — он открыл старую копию. Пусть нажмёт кнопку ниже при включённом интернете.</div>
@@ -5096,413 +5187,6 @@ function wireCalc(){
 }
 
 /* ---------- вопрос ---------- */
-function viewQuestion(){
-  const f = FLOWS[S.flow], total=f.qs.length, cur=f.qs[S.step];
-  let ticks="";
-  for(let i=0;i<total;i++){
-    const cl = i<S.step?"done":(i===S.step?"now":"");
-    ticks += `<div class="tk ${cl}"><span>${i+1}</span></div>`;
-  }
-  return `<button class="back" id="back">← ${S.step===0?"К списку":"Назад"}</button>
-  <div class="ruler"><div class="ticks">${ticks}</div></div>
-  <div class="qwrap view">
-    <div class="qnum">${esc(f.title)} · вопрос ${S.step+1} из ${total}</div>
-    <div class="qtitle">${esc(cur.q)}</div>
-    <div class="qask"><b>Спросите клиента</b>${esc(cur.ask)}</div>
-    ${cur.opts.map((o,i)=>`<button class="opt" data-pick="${i}">${esc(o[0])}</button>`).join("")}
-  </div>`;
-}
-
-/* ---------- результат ---------- */
-function inKit(x){ return S.kit.indexOf(x)>=0; }
-function chipPick(x){ return `<span class="chip pickable ${inKit(x)?"on":""}" data-add="${esc(x)}">${esc(x)}</span>`; }
-
-function viewResult(){
-  const f=FLOWS[S.flow];
-  const r=f.out(S.ans);
-  const chosen = f.qs.map((q,i)=>{ const o=q.opts.find(o=>o[1]===S.ans[i]); return o?o[0]:"—"; });
-  const block = (cls,title,inner) => `<div class="block ${cls}"><h3>${title}</h3>${inner}</div>`;
-  let h = `<button class="back" id="back">← Изменить ответы</button>
-  <div class="view">
-  <div class="res-h">
-    <div class="rl">Рекомендация · ${esc(aisleTag(f.zone))}</div>
-    <h2>${esc(r.head)}</h2>
-    <div style="font-family:var(--mono);font-size:12px;color:#B9BEC0;margin-top:6px">${esc(r.sub)}</div>
-    <div class="answers">${chosen.map(c=>`<span class="a">${esc(c)}</span>`).join("")}</div>
-  </div>
-  <div class="btnrow" style="margin-top:8px">
-    <button class="btn primary" id="clientBtn">Показать клиенту</button>
-    <button class="btn dark" id="deepBtn">Дотошный клиент</button>
-  </div>
-  <div class="btnrow" style="margin-top:8px">
-    <button class="btn" id="careBtn">Памятка клиенту</button>
-  </div>
-  <div class="saved" id="careMsg"></div>`;
-
-  h += `<div style="display:flex;gap:8px;margin-top:8px">
-    <button class="shortbtn ${S.short?"on":""}" id="shortBtn">${S.short?"Коротко · включено":"Коротко — для часа пик"}</button>
-  </div>`;
-
-  const m3 = must3For(S.flow, r);
-  h += `<div class="must"><h3>Три обязательных — назвать вслух</h3>
-    ${m3.map(x=>`<div class="m ${inKit(x[0])?"on":""}" data-add="${esc(x[0])}">
-      <div class="mn">${esc(x[0])}</div><div class="mw">${x[1]}</div></div>`).join("")}</div>`;
-
-  if(S.short){
-    h += block("pick","Главный аргумент",
-      `<div class="pickrow"><div class="pn">${r.picks[0][0]}</div><div class="pw">${r.picks[0][1]}</div></div>`);
-    h += `<div class="script" style="margin-top:8px"><span class="rl">Можно сказать так</span>${r.script}</div>
-      <div class="btnrow">
-        <button class="btn primary" id="clientBtn2">Показать клиенту</button>
-        <button class="btn dark" id="tolist">Другой запрос</button>
-      </div></div>`;
-    return h;
-  }
-
-  h += block("pick","Что предложить и почему",
-    r.picks.map(p=>`<div class="pickrow"><div class="pn">${p[0]}</div><div class="pw">${p[1]}</div></div>`).join(""));
-
-  h += block("","На что смотреть в характеристиках",
-    `<ul class="tight">${r.params.map(p=>`<li><b>${p[0]}</b> — ${p[1]}</li>`).join("")}</ul>`);
-
-  h += block("","Расходка и сопутствующие — отметьте, что берёт",
-    `<div class="chips">${r.addons.map(chipPick).join("")}</div>`);
-
-  if(r.siz && r.siz.length) h += block("warn","СИЗ — обязательно предложить",
-    `<ul class="tight">${r.siz.map(x=>`<li class="pickable ${inKit(x)?"on":""}" data-add="${esc(x)}">${x}</li>`).join("")}</ul>`);
-
-  if(r.up && r.up.length) h += block("","Доп. товар — что предложить сверху",
-    `<div class="chips">${r.up.map(chipPick).join("")}</div>`);
-
-  h += block("warn","Частые ошибки клиентов",
-    `<ul class="tight">${r.errors.map(x=>`<li>${x}</li>`).join("")}</ul>`);
-
-  h += block("","Что чаще всего забывают взять",
-    `<ul class="tight">${missFor(f.zone).map(x=>`<li class="pickable ${inKit(x)?"on":""}" data-add="${esc(x)}">${esc(x)}</li>`).join("")}</ul>`);
-
-  h += block("","Если нужного нет в наличии",
-    `<ul class="tight">${zamenaFor(S.flow).map(x=>`<li>${x}</li>`).join("")}</ul>`);
-
-  h += block("pick","Полезные советы — сказать клиенту",
-    `<ul class="tight">${tipsFor(S.flow).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`);
-
-  const objs = objectionsFor(f.zone);
-  h += block("","Если начнёт возражать",
-    objs.map(o=>`<div class="pickrow"><div class="pn">${esc(o[0])}</div><div class="pw">${o[1]}</div></div>`).join(""));
-
-  h += `<div class="script" style="margin-top:8px"><span class="rl">Можно сказать так</span>${r.script}</div>
-  <a class="card ref" style="text-decoration:none;margin-top:10px" href="${siteSearch(f.site||f.title)}" target="_blank" rel="noopener">
-    <div class="ct">Открыть на сайте</div>
-    <div class="cd">Проверить наличие, артикулы и цены в Саранске</div></a>
-  <div class="closing"><h3>Перед тем как отпустить клиента</h3>
-    ${CLOSING.map((c,i)=>`<div class="ci ${S.close.indexOf(i)>=0?"on":""}" data-close-i="${i}">
-      <div class="cin">${esc(c[0])}</div><div class="ciw">${esc(c[1])}</div></div>`).join("")}</div>
-
-  <div class="btnrow">
-    <button class="btn dark" id="quickCase">Запомнить случай</button>
-  </div>
-  <div class="saved" id="caseMsg"></div>
-  <div class="btnrow" style="margin-top:0">
-    <button class="btn primary" id="again">Заново</button>
-    <button class="btn dark" id="tolist">Другой запрос</button>
-  </div></div>`;
-  return h;
-}
-
-/* ---------- экран для клиента ---------- */
-function viewClient(){
-  const f=FLOWS[S.flow], r=f.out(S.ans);
-  const kit = S.kit.length ? S.kit : r.addons.slice(0,5);
-  return `<div class="sheet" id="clientSheet">
-    <div class="sh-top"><div class="t">Рекомендация</div><button data-close="client">Закрыть</button></div>
-    <div class="sh-body big">
-      <h2>${esc(r.head)}</h2>
-      <div class="bsub">${esc(r.sub)}</div>
-      ${r.picks.slice(0,3).map(p=>`<div class="brow"><div class="bn">${p[0]}</div><div class="bw">${p[1]}</div></div>`).join("")}
-      ${must3For(S.flow,r).map(x=>`<div class="brow" style="border-left-color:var(--tape)"><div class="bn">${esc(x[0])}</div><div class="bw">${x[1]}</div></div>`).join("")}
-      <div class="blist"><h3 style="font-family:var(--display);font-size:16px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Что понадобится к нему</h3>
-        <ul class="tight">${kit.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
-    </div></div>`;
-}
-
-/* ---------- глубокое пояснение ---------- */
-function viewDeep(){
-  const f=FLOWS[S.flow];
-  return `<div class="sheet">
-    <div class="sh-top"><div class="t">Разбор по существу</div><button data-close="deep">Закрыть</button></div>
-    <div class="sh-body">
-      <div class="note">Клиент проверяет вашу уверенность, а не знания. Отвечайте спокойно, по физике, не переходя на спор о брендах. Одного точного объяснения обычно достаточно.</div>
-      <div style="height:10px"></div>
-      ${deepFor(S.flow).map(d=>`<div class="block"><h3>${esc(d[0])}</h3>
-        <div style="font-size:15px;line-height:1.55">${d[1]}</div></div>`).join("")}
-      <div class="btnrow"><button class="btn dark" data-close="deep">Назад</button></div>
-    </div></div>`;
-}
-
-/* ---------- список комплекта ---------- */
-function viewKitSheet(){
-  return `<div class="sheet" id="kitSheet">
-    <div class="sh-top"><div class="t">Комплект · ${S.kit.length}</div><button data-close="kit">Закрыть</button></div>
-    <div class="sh-body">
-      ${S.kit.length ? `<div class="block"><h3>К покупке</h3>
-        <ul class="tight">${S.kit.map(x=>`<li class="pickable on" data-add="${esc(x)}">${esc(x)}</li>`).join("")}</ul>
-        <div class="note" style="margin-top:12px">Нажмите на позицию, чтобы убрать её из списка.</div></div>`
-      : `<div class="note">Пока пусто. Отмечайте позиции в блоках «Расходка», «СИЗ» и «Доп. товар» — они соберутся сюда.</div>`}
-      <div class="btnrow">
-        <button class="btn primary" id="kitCopy">Скопировать</button>
-        <button class="btn dark" data-close="kit">Назад</button>
-      </div>
-      <div class="saved" id="kitMsg"></div>
-    </div></div>`;
-}
-
-/* ---------- шпаргалки ---------- */
-function viewRef(){
-  let h=`<div class="eyebrow">Быстрые справки</div>`;
-  REF.forEach(r=>{
-    const open = S.open==="ref:"+r.id;
-    h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`;
-    if(open){
-      h+=`<div class="block" style="margin-bottom:10px">
-        <ul class="tight">${r.rows.map(x=>`<li><b>${esc(x[0])}</b> — ${x[1]}</li>`).join("")}</ul>
-        <div class="script" style="margin-top:12px"><span class="rl">Главное</span>${esc(r.note)}</div>
-      </div>`;
-    }
-  });
-  h+=`<div class="eyebrow">Разделы сайта Лемана ПРО · Саранск</div>
-   <div class="note">Наличие, артикулы и цены — только здесь и в рабочей системе магазина. Приложение даёт логику подбора, а не остатки.</div>
-   <div style="height:8px"></div>`;
-  SITE_SECTIONS.forEach(([t,u])=>{
-    h+=`<a class="card ref" style="text-decoration:none" href="${SITE+u}" target="_blank" rel="noopener"><div class="ct">${esc(t)}</div><div class="aisle">${esc(u)}</div></a>`;
-  });
-  return h;
-}
-
-/* ---------- наборы ---------- */
-function viewKits(){
-  let h=`<div class="eyebrow">Клиент называет работу — вы называете список</div>`;
-  KITS.forEach((k,i)=>{
-    const open=S.open==="kit:"+i;
-    h+=`<button class="card ref" data-kit="${i}"><div class="ct">${esc(k.t)}</div><div class="cd">${esc(k.hint)}</div></button>`;
-    if(open) h+=`<div class="block" style="margin-bottom:10px"><h3>Что нужно</h3>
-      <ul class="tight">${k.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
-  });
-  return h;
-}
-
-/* ---------- аллеи ---------- */
-function viewMap(){
-  const groups={};
-  ZONES.forEach(z=>{ const n=aisle(z); if(n) (groups[n]=groups[n]||[]).push(z); });
-  const nums = Object.keys(groups).sort((a,b)=>{
-    const na=/^\d+$/.test(a), nb=/^\d+$/.test(b);
-    if(na&&nb) return (+a)-(+b);
-    if(na) return -1; if(nb) return 1; return a.localeCompare(b,"ru");
-  });
-  const sel = S.aisleQ;
-
-  let pills = `<div class="aisle-pills">` + nums.map(n=>
-    `<button data-aisle="${esc(n)}" class="${sel===n?"on":""} ${/^\d+$/.test(n)?"":"dep"}">${esc(n)}</button>`).join("") + `</div>`;
-
-  let detail="";
-  if(sel){
-    const cats = Object.keys(FLOWS).filter(k=>aisle(FLOWS[k].zone)===sel);
-    const cont = AISLE_CONTENT[sel];
-    detail = `<div class="res-h"><div class="rl">${/^\d+$/.test(sel)?"Аллея":"Отдел"}</div><h2>${esc(sel)}</h2></div>`;
-    if(cont) detail += `<div class="block"><h3>Что здесь лежит</h3>
-      <ul class="tight">${cont.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
-    detail += `<div class="block pick"><h3>Подбор по этим товарам</h3>
-      ${cats.length ? cats.map(k=>flowCard(k)).join("") : '<div class="note">Категорий подбора пока нет.</div>'}</div>`;
-  }
-
-  return `<div class="eyebrow">Я стою у аллеи…</div>
-  <div class="note">Нажмите номер — увидите, что здесь лежит, и сразу попадёте в подбор по этим товарам.</div>
-  <div style="height:10px"></div>
-  ${pills}
-  ${detail}
-
-  <div class="eyebrow">Номера аллей и отделы</div>
-  <div class="note">Можно вписать и цифру, и название чужого отдела — например «Сад». Сохраняется в этом телефоне.</div>
-  <div style="height:8px"></div>
-  ${ZONES.map(z=>`<div class="aisle-row"><div class="nm">${esc(z)}</div>
-     <input data-zone="${esc(z)}" value="${esc(aisle(z))}" placeholder="№" inputmode="text"></div>`).join("")}
-  <div class="saved" id="saved"></div>
-
-  <div class="eyebrow">Свои заметки</div>
-  <div class="note">Что помнить именно по вашему залу: что закончилось, что заказывают, что лежит не на своём месте.</div>
-  <div style="height:8px"></div>
-  <textarea id="notes" placeholder="Например: коронки 68 мм — верхняя полка над бурами. Фитинги — торец стеллажа с компрессорами.">${esc(store.get("notes")||"")}</textarea>
-  <div class="saved" id="saved2"></div>
-
-  <div class="eyebrow">Кейсы отдела</div>
-  <div class="note">Писать руками не обязательно. В конце любого подбора есть кнопка «Запомнить случай» — она сама запишет вопрос, ответ и комплект. Здесь можно дописать одну строку или удалить лишнее. Кейсы находятся обычным поиском.</div>
-  <div style="height:8px"></div>
-  <div class="caseform">
-    <input id="caseT" placeholder="С чем пришёл клиент (если пишете вручную)" autocomplete="off">
-    <textarea id="caseR" placeholder="Что предложили и почему это сработало"></textarea>
-    <button class="btn primary" id="caseAdd">Сохранить кейс</button>
-  </div>
-  <div style="height:10px"></div>
-  ${getCases().length ? getCases().map((c,i)=>`<div class="casecard">
-      <div class="cn">${esc(c.t)}</div>
-      <div class="cr">${esc(c.r)}</div>
-      <button class="del" data-delcase="${i}">Удалить</button></div>`).join("")
-    : '<div class="note">Пока пусто.</div>'}
-
-  <div class="eyebrow">Версия и обновление</div>
-  <div class="verbox">
-    <span class="dot" style="background:var(--ok)"></span>Версия приложения: <b>${APP_VERSION}</b> от ${APP_DATE}<br>
-    <span class="dot" id="netDot" style="background:var(--ink-3)"></span><span id="netTxt">Проверяю связь…</span><br>
-    Категорий: ${Object.keys(FLOWS).length} · шпаргалок: ${REF.length} · марок: ${BRANDS.length}
-  </div>
-  <div style="height:8px"></div>
-  <div class="note">Если у коллеги другая цифра версии — он открыл старую копию. Пусть нажмёт кнопку ниже при включённом интернете.</div>
-  <div style="height:8px"></div>
-  <button class="btn dark" id="updBtn">Проверить обновление</button>
-  <div class="saved" id="updMsg"></div>
-
-  <div class="eyebrow">Передать коллеге</div>
-  <div class="note">Аллеи, заметки и кейсы хранятся в каждом телефоне отдельно. Чтобы не заполнять всё заново — скопируйте код и отправьте его в мессенджер. Коллега вставит его у себя и получит ваши настройки.</div>
-  <div style="height:8px"></div>
-  <div class="btnrow" style="margin-top:0">
-    <button class="btn dark" id="expBtn">Скопировать код</button>
-  </div>
-  <div class="saved" id="expMsg"></div>
-  <textarea id="impIn" placeholder="Вставьте сюда код от коллеги" style="min-height:70px"></textarea>
-  <button class="btn primary" id="impBtn">Загрузить настройки</button>
-  <div class="saved" id="impMsg"></div>`;
-}
-
-
-/* ---------- КАЛЬКУЛЯТОРЫ ---------- */
-function viewCalc(){
-  return `<div class="eyebrow">Посчитать при клиенте</div>
-  <div class="note">Считает прямо здесь, ничего не сохраняет. Цифры показывайте клиенту — это убеждает лучше любых слов.</div>
-  <div style="height:10px"></div>
-
-  <div class="calcbox">
-    <h3>Компрессор под инструмент</h3>
-    <div class="cdesc">Отметьте, чем клиент будет работать. Считаем с запасом 30% на утечки и потери в шланге.</div>
-    ${AIR.map((a,i)=>`<label><input type="checkbox" data-air="${i}"> ${esc(a[0])} <span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3)">${a[1]} л/мин</span></label>`).join("")}
-    <div class="calcout" id="airOut"><span class="cn">Результат</span>Отметьте инструменты</div>
-  </div>
-
-  <div class="calcbox">
-    <h3>Генератор под нагрузку</h3>
-    <div class="cdesc">Главное — не сумма ватт, а пусковой ток. Он у моторов в 2–5 раз выше рабочего.</div>
-    ${WATT.map((w,i)=>`<label><input type="checkbox" data-watt="${i}"> ${esc(w[0])} <span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3)">${w[1]} Вт ×${w[2]}</span></label>`).join("")}
-    <div class="calcout" id="wattOut"><span class="cn">Результат</span>Отметьте потребителей</div>
-  </div>
-
-  <div class="calcbox">
-    <h3>Длина правила</h3>
-    <div class="cdesc">Шаг между маяками в сантиметрах.</div>
-    <input type="number" id="stepIn" placeholder="Например 120" inputmode="numeric">
-    <div class="calcout" id="ruleOut"><span class="cn">Результат</span>Введите шаг маяков</div>
-  </div>
-
-  <div class="calcbox">
-    <h3>Клей под плитку</h3>
-    <div class="cdesc">Площадь и размер зуба гребёнки.</div>
-    <input type="number" id="areaIn" placeholder="Площадь, м²" inputmode="decimal">
-    <select id="zubIn">
-      <option value="6">Зуб 6 мм — плитка до 15 см</option>
-      <option value="8" selected>Зуб 8 мм — средняя плитка</option>
-      <option value="10">Зуб 10 мм — крупная</option>
-      <option value="12">Зуб 12 мм — крупноформат</option>
-    </select>
-    <div class="calcout" id="glueOut"><span class="cn">Результат</span>Введите площадь</div>
-  </div>
-
-  <div class="calcbox">
-    <h3>Ток под электрод</h3>
-    <div class="cdesc">Ориентир: 30–40 ампер на каждый миллиметр диаметра.</div>
-    <select id="elIn">
-      <option value="2">Электрод 2 мм — металл 1–2 мм</option>
-      <option value="2.5">Электрод 2,5 мм — металл 2–3 мм</option>
-      <option value="3" selected>Электрод 3 мм — металл 3–5 мм</option>
-      <option value="4">Электрод 4 мм — металл 5–8 мм</option>
-      <option value="5">Электрод 5 мм — металл от 8 мм</option>
-    </select>
-    <div class="calcout" id="elOut"><span class="cn">Результат</span></div>
-  </div>
-
-  <div class="calcbox">
-    <h3>Глубина реза болгаркой</h3>
-    <div class="cdesc">Реальная глубина меньше половины диска — мешают гайка и кожух.</div>
-    <select id="ushmIn">
-      <option value="115">Круг 115 мм</option>
-      <option value="125" selected>Круг 125 мм</option>
-      <option value="150">Круг 150 мм</option>
-      <option value="180">Круг 180 мм</option>
-      <option value="230">Круг 230 мм</option>
-    </select>
-    <div class="calcout" id="ushmOut"><span class="cn">Результат</span></div>
-  </div>`;
-}
-
-function wireCalc(){
-  const air=()=>{
-    let s=0,n=0;
-    app.querySelectorAll("[data-air]").forEach(c=>{ if(c.checked){ s+=AIR[+c.dataset.air][1]; n++; } });
-    const el=document.getElementById("airOut"); if(!el) return;
-    if(!n){ el.innerHTML='<span class="cn">Результат</span>Отметьте инструменты'; return; }
-    const need=Math.round(s*1.3/10)*10;
-    const tank = need<180?"24–50 л":(need<300?"50 л":(need<450?"50–100 л":"100 л и больше"));
-    el.innerHTML=`<span class="cn">Нужен компрессор</span>Производительность от <b>${need} л/мин</b><br>Ресивер ${tank}<br>
-      <span style="font-size:13px;color:#B9BEC0">Сумма по инструментам ${s} л/мин плюс 30% запаса. Если работают двое одновременно — умножайте на два.</span>`;
-  };
-  const watt=()=>{
-    let run=0,peak=0,n=0;
-    app.querySelectorAll("[data-watt]").forEach(c=>{ if(c.checked){ const w=WATT[+c.dataset.watt]; run+=w[1]; peak=Math.max(peak,w[1]*w[2]); n++; } });
-    const el=document.getElementById("wattOut"); if(!el) return;
-    if(!n){ el.innerHTML='<span class="cn">Результат</span>Отметьте потребителей'; return; }
-    const total=Math.max(run+ (peak - peak/2), peak);
-    const kw=(Math.ceil(total/500)*500)/1000;
-    el.innerHTML=`<span class="cn">Нужен генератор</span>Мощность от <b>${kw.toFixed(1)} кВт</b><br>
-      Рабочая нагрузка ${run} Вт, пик при запуске около ${Math.round(peak)} Вт<br>
-      <span style="font-size:13px;color:#B9BEC0">Пик считается по самому тяжёлому мотору — обычно всё не стартует одновременно. Сварку инверторным генератором не питать.</span>`;
-  };
-  const rule=()=>{
-    const v=parseFloat((document.getElementById("stepIn")||{}).value);
-    const el=document.getElementById("ruleOut"); if(!el) return;
-    if(!v||v<20){ el.innerHTML='<span class="cn">Результат</span>Введите шаг маяков'; return; }
-    const min=v+40;
-    let len = min<=150?"1,5 м":(min<=200?"2 м":(min<=250?"2,5 м":"3 м"));
-    el.innerHTML=`<span class="cn">Правило</span>Берём <b>${len}</b><br>
-      Минимум ${Math.round(min)} см: шаг ${v} см плюс 40 см опоры на маяки<br>
-      <span style="font-size:13px;color:#B9BEC0">Плюс короткое 1 м на откосы и углы.</span>`;
-  };
-  const glue=()=>{
-    const a=parseFloat((document.getElementById("areaIn")||{}).value);
-    const z=(document.getElementById("zubIn")||{}).value;
-    const el=document.getElementById("glueOut"); if(!el) return;
-    if(!a){ el.innerHTML='<span class="cn">Результат</span>Введите площадь'; return; }
-    const kg=a*GLUE[z], bags=Math.ceil(kg/25);
-    el.innerHTML=`<span class="cn">Плиточный клей</span>Около <b>${Math.round(kg)} кг</b> — это ${bags} мешк${bags===1?"":"а"} по 25 кг<br>
-      <span style="font-size:13px;color:#B9BEC0">Расход при зубе ${z} мм — ${GLUE[z]} кг на м². На кривом основании уйдёт больше, берите с запасом на один мешок.</span>`;
-  };
-  const el_=()=>{
-    const d=parseFloat((document.getElementById("elIn")||{}).value);
-    const el=document.getElementById("elOut"); if(!el) return;
-    el.innerHTML=`<span class="cn">Сварочный ток</span><b>${Math.round(d*30)}–${Math.round(d*40)} А</b><br>
-      <span style="font-size:13px;color:#B9BEC0">Внизу диапазона — тонкий металл и потолочный шов, вверху — толстый металл и нижнее положение.</span>`;
-  };
-  const ushm=()=>{
-    const d=parseFloat((document.getElementById("ushmIn")||{}).value);
-    const el=document.getElementById("ushmOut"); if(!el) return;
-    const map={115:30,125:33,150:40,180:55,230:70};
-    el.innerHTML=`<span class="cn">Максимальная глубина</span>Около <b>${map[d]} мм</b> за проход<br>
-      <span style="font-size:13px;color:#B9BEC0">По мере износа круга глубина падает. Если нужно глубже — это уже другой диаметр машины.</span>`;
-  };
-  app.querySelectorAll("[data-air]").forEach(c=>c.onchange=air);
-  app.querySelectorAll("[data-watt]").forEach(c=>c.onchange=watt);
-  const bind=(id,fn)=>{ const e=document.getElementById(id); if(e){ e.oninput=fn; e.onchange=fn; } };
-  bind("stepIn",rule); bind("areaIn",glue); bind("zubIn",glue); bind("elIn",el_); bind("ushmIn",ushm);
-  el_(); ushm();
-}
-
-/* ---------- сборка ---------- */
 function render(){
   let h="";
   if(S.tab==="ask"){
@@ -5539,7 +5223,7 @@ function render(){
 function wireCards(){
   app.querySelectorAll("[data-flow]").forEach(b=>b.onclick=()=>{
     bumpUsage(b.dataset.flow);
-    go({flow:b.dataset.flow,step:0,ans:[],close:[]});
+    go({flow:b.dataset.flow,step:0,ans:[],close:[],addCode:false});
   });
   app.querySelectorAll("[data-ref]").forEach(b=>b.onclick=()=>{
     const id="ref:"+b.dataset.ref;
@@ -5640,6 +5324,27 @@ function wire(){
       ta.remove();
     }
   };
+
+  const cdA=document.getElementById("cdAdd");
+  if(cdA) cdA.onclick=()=>go({addCode:true});
+  const cdC=document.getElementById("cdCancel");
+  if(cdC) cdC.onclick=()=>go({addCode:false});
+  const cdS=document.getElementById("cdSave");
+  if(cdS) cdS.onclick=()=>{
+    const g=id=>((document.getElementById(id)||{}).value||"").trim();
+    const n=g("cdName"), c=g("cdCode");
+    if(!n||!c){ const m=document.getElementById("cdMsg"); if(m) m.textContent="Нужны название и код"; return; }
+    const f=FLOWS[S.flow], r=f.out(S.ans);
+    const list=getCodes();
+    list.unshift({ id:"c"+Date.now(), f:S.flow, k:codeKey(S.flow,r.head), head:r.head,
+                   cat:f.title, n:n, c:c, p:g("cdPrice"), note:g("cdNote"),
+                   all:!!(document.getElementById("cdAll")||{}).checked });
+    setCodes(list);
+    go({addCode:false});
+  };
+  app.querySelectorAll("[data-delcode]").forEach(b=>b.onclick=()=>{
+    setCodes(getCodes().filter(c=>c.id!==b.dataset.delcode)); render();
+  });
 
   const qc=document.getElementById("quickCase");
   if(qc) qc.onclick=()=>{
