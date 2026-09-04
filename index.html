@@ -401,7 +401,7 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 
 <div class="wrap foot">
   Работает без интернета. Данные по аллеям хранятся только в этом телефоне.<br>
-  Проверяйте наличие и цену в рабочей системе магазина.<br>Версия 11 · 27.08.2026
+  Проверяйте наличие и цену в рабочей системе магазина.<br><span id="footVer"></span>
 </div>
 
 <script>
@@ -9367,8 +9367,8 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "23";
-const APP_DATE = "27.08.2026";
+const APP_VERSION = "31";
+const APP_DATE = "04.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
 const CLOSING = [
@@ -11999,6 +11999,9 @@ const ACCESS_CODE = "5050";
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") check(); });
   setTimeout(()=>inp.focus(),200);
 })();
+
+const fv=document.getElementById("footVer");
+if(fv) fv.textContent = "Версия " + APP_VERSION + " · " + APP_DATE + " · каталог " + artList().length + " позиций";
 
 render();
 
