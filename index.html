@@ -69,7 +69,7 @@ nav.tabs .in{display:flex;max-width:720px;margin:0 auto;width:100%}
 /* ---- поиск ---- */
 .search{display:flex;gap:8px;margin:14px 0 4px}
 .search input{
-  flex:1;font-family:var(--body);font-size:16px;padding:14px;
+  flex:1;min-width:0;font-family:var(--body);font-size:16px;padding:14px;
   border:2px solid var(--ink);border-radius:var(--radius);background:var(--card);color:var(--ink)
 }
 .search input:focus{outline:3px solid var(--tape);outline-offset:1px}
@@ -172,7 +172,7 @@ textarea{width:100%;min-height:120px;font:inherit;font-size:15px;padding:12px;bo
 #gate .g-note{font-family:var(--mono);font-size:10.5px;color:#6E7477;margin-top:32px;line-height:1.7;max-width:280px}
 
 /* выбираемые позиции комплекта */
-.chip.pickable{cursor:pointer;padding-left:24px;position:relative}
+.chip.pickable{cursor:pointer;user-select:none;padding-left:24px;position:relative}
 .chip.pickable::before{content:"";position:absolute;left:7px;top:50%;transform:translateY(-50%);
   width:11px;height:11px;border:2px solid var(--ink-3);border-radius:2px}
 .chip.on{background:var(--tape);border-color:var(--tape-dark);font-weight:700}
@@ -311,6 +311,37 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .block.why{border-left:5px solid #2F6DA8}
 .block.why h3{color:#2F6DA8}
 .block.why h3::before{background:#2F6DA8}
+
+.kb{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);padding:13px;margin-bottom:8px;border-radius:2px}
+.kb .kbq{font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.02em;line-height:1.15}
+.kb .kba{font-size:14.5px;line-height:1.5;margin-top:7px;color:var(--ink)}
+.kb .kbp{font-family:var(--mono);font-size:11px;color:var(--tape-dark);margin-top:8px;letter-spacing:.05em;
+  background:var(--concrete);display:inline-block;padding:4px 7px;border-radius:2px}
+
+.matgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:6px}
+@media(max-width:400px){.matgrid{grid-template-columns:repeat(2,1fr)}}
+.matgrid button{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--ok);
+  border-radius:2px;padding:14px 9px;font-family:var(--display);font-size:14.5px;text-transform:uppercase;
+  letter-spacing:.02em;color:var(--ink);line-height:1.15;min-height:56px}
+.matgrid button:active{background:var(--tape)}
+.sug{background:var(--card);border:1px solid var(--ink);border-top:0;border-radius:0 0 2px 2px;margin-top:-8px;margin-bottom:10px;overflow:hidden}
+.sug button{display:flex;width:100%;gap:9px;align-items:center;text-align:left;background:none;border:0;
+  border-bottom:1px dashed var(--line);padding:12px 13px;font:inherit;font-size:15px;color:var(--ink)}
+.sug button:last-child{border:0}
+.sug .tagx{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ink-3);background:var(--concrete);padding:3px 6px;border-radius:2px;flex:none;margin-left:auto}
+.recent{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.recent button{font-family:var(--mono);font-size:12px;background:var(--concrete);border:1px solid var(--line);
+  padding:7px 9px;border-radius:2px;color:var(--ink)}
+.oneline{background:var(--ink);color:#fff;border-left:5px solid var(--tape);border-radius:2px;padding:14px;margin-bottom:10px}
+.oneline .ol{font-size:17px;line-height:1.4;font-weight:600}
+.oneline .op{font-family:var(--mono);font-size:11.5px;color:var(--tape);margin-top:8px;letter-spacing:.05em}
+
+.matgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+@media(max-width:360px){.matgrid{grid-template-columns:repeat(2,1fr)}}
+.kbshort{background:var(--ink);color:#fff;font-size:16px;line-height:1.45;padding:12px;border-radius:2px;margin-bottom:11px;font-weight:600}
+.kbshort .kbpl{display:block;font-family:var(--mono);font-size:11px;color:var(--tape);font-weight:400;
+  margin-top:7px;letter-spacing:.05em}
 .hide{display:none}
 .foot{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:center;padding:26px 0 10px;line-height:1.6}
 @media(prefers-reduced-motion:no-preference){
@@ -336,15 +367,15 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
       <div class="hsub">Отдел инструментов · подсказка на полу</div>
     </div>
     <button class="hbtn" id="installBtn" style="display:none;background:var(--tape);color:#16181A;border-color:var(--tape);font-weight:700;margin-left:auto">Установить</button>
+    <button class="hbtn" id="updHead" title="Обновить приложение">Обновить</button>
+    <button class="hbtn" id="setBtn" title="Настройки">⚙</button>
     <button class="hbtn" id="homeBtn">В начало</button>
   </div>
   <nav class="tabs"><div class="in">
     <button class="tab" data-tab="ask" aria-selected="true">Подбор</button>
     <button class="tab" data-tab="quick" aria-selected="false">Ответ</button>
     <button class="tab" data-tab="calc" aria-selected="false">Счёт</button>
-    <button class="tab" data-tab="ref" aria-selected="false">Шпаргалки</button>
     <button class="tab" data-tab="kits" aria-selected="false">Наборы</button>
-    <button class="tab" data-tab="map" aria-selected="false">Моё</button>
   </div></nav>
 </header>
 
@@ -4559,7 +4590,299 @@ const PRO_WORDS = [
  ["«Как хотите»","«Я бы взял этот, потому что…»"]
 ];
 
+/* ============ БАЗА ЗНАНИЙ: МАТЕРИАЛ + ОПЕРАЦИЯ ============
+   Формат: [запрос, ответ, где взять, синонимы для поиска]
+   Клиент спрашивает материалами, а не инструментами. Здесь ответы именно так. */
+
+const KB = [
+
+/* ---------- ПЛИТКА, КАМЕНЬ, КЕРАМИКА ---------- */
+["Чем резать клинкерную плитку",
+ "Клинкер плотнее обычного кафеля и обжигается при высокой температуре — ручной плиткорез его чаще ломает не по риске. Нужен <b>алмазный диск сплошной или турбо-сегментный по керамограниту</b>, толщина 1,4–1,8 мм, на УШМ 125 с пониженными оборотами, либо электрический плиткорез с водой. Для ступеней и подоконников — только мокрый рез, иначе кромка выкрашивается.",
+ "Аллея 47: диски R3, плиткорезы R1–R2 и R4–R5",
+ "клинкер клинкерная ступени подоконник фасадная плитка"],
+
+["Чем резать керамогранит",
+ "Сплошной алмазный обод, низкие обороты, охлаждение водой. Керамогранит плотный и однородный — сегментный диск даёт сколы по всей кромке, а ручной плиткорез уводит трещину в сторону от риски. Крупноформат — только на станке с направляющей.",
+ "Аллея 47: диски R3, электроплиткорезы R4–R5",
+ "керамогранит гресс полированный ректифицированный"],
+
+["Чем резать кафель на стене",
+ "Настенный кафель до 10 мм спокойно берёт ручной плиткорез с подшипниками. Вырезы под розетку — алмазная коронка, подрезка в углу — УШМ со сплошным диском. Резать надо по лицевой стороне, надрез один и уверенный.",
+ "Аллея 47: плиткорезы R1–R2, коронки R3",
+ "кафель настенная плитка ванная фартук"],
+
+["Чем резать мозаику",
+ "Мозаику на сетке режут по шву обычным ножом, а отдельные чипы — алмазным диском на маленькой УШМ или щипцами для плитки. Плиткорез здесь бесполезен: слишком мелкий элемент.",
+ "Аллея 47: диски R3, аксессуары R7",
+ "мозаика чипы сетка"],
+
+["Чем сверлить керамогранит",
+ "Алмазная коронка сухого реза нужного диаметра, без удара, обороты минимальные, охлаждение водой. Копьевидное сверло по кафелю керамогранит не берёт — оно рассчитано на глазурь.",
+ "Аллея 46: коронки по керамике L4",
+ "керамогранит отверстие коронка сверлить смеситель"],
+
+["Чем сверлить кафель",
+ "Копьевидное сверло по кафелю до 10 мм, безударный режим, малые обороты. Точку заклеить малярным скотчем, чтобы сверло не уехало по глазури. Прошли плитку — переставили бур и включили удар уже по стене.",
+ "Аллея 46: свёрла по керамике L4",
+ "кафель отверстие сверлить плитка дюбель"],
+
+["Чем резать гранит и мрамор",
+ "Алмазный диск с мягкой связкой и мокрым резом. Правило обратное интуиции: чем твёрже камень, тем мягче нужна связка, иначе диск заполируется и перестанет резать при живом алмазе.",
+ "Аллея 47: диски R3",
+ "гранит мрамор камень столешница натуральный"],
+
+["Чем резать тротуарную плитку и бордюр",
+ "Сегментный алмазный диск по бетону, сухой рез, УШМ 230 или бензорез. Прорези между сегментами здесь обязательны: они охлаждают диск и выбрасывают шлам, а его на брусчатке очень много.",
+ "Аллея 46: алмазные L11, диски L12–L13",
+ "брусчатка тротуарная плитка бордюр поребрик"],
+
+["Чем резать шамотный кирпич",
+ "Алмазный сегментный диск по камню. Шамот абразивный, стачивает диск быстро — берите с твёрдой связкой и высоким сегментом. Печную кладку лучше резать мокрым способом: пыль очень мелкая.",
+ "Аллея 46: алмазные L11",
+ "шамот печной кирпич огнеупорный"],
+
+/* ---------- БЕТОН, БЛОКИ ---------- */
+["Чем резать армированный бетон",
+ "Алмазный диск специально по железобетону: усиленная связка и защитные сегменты. Обычный диск по бетону об арматуру тупится за пару резов. Глубоко — только штроборез или резчик швов, УШМ 125 берёт 33 мм.",
+ "Аллея 46: алмазные L11",
+ "железобетон жби арматура армированный панель"],
+
+["Чем резать газобетон и пеноблок",
+ "Ручная ножовка по газобетону с твердосплавными напайками — быстро, ровно и без пыли в лицо. Сабельная пила с длинным полотном тоже подходит. УШМ здесь лишняя: даёт облако пыли и режет неглубоко.",
+ "Аллея 48: ножовки L7 · аллея 46: сабельные R4",
+ "газобетон пеноблок газоблок ячеистый резать"],
+
+["Чем сверлить газобетон",
+ "Безударный режим, обычное сверло по бетону или даже по дереву. Удар разбивает отверстие в конус, и после этого не держит никакой дюбель. Крепёж — специальный винтовой или химический.",
+ "Аллея 46: буры L1–L2 · крепёж в скобянке",
+ "газобетон сверлить дюбель крепить"],
+
+["Чем штробить бетон",
+ "Штроборез с двумя дисками и пылеотводом — ровная глубина и половина пыли уходит в пылесос. УШМ с алмазным диском даёт кривую штробу и облако кварцевой пыли: если только ей, то обязательно кожух с патрубком, пылесос класса M и респиратор.",
+ "Аллея 46: алмазные L11 · пылесосы аллея 50",
+ "штробить штроба проводка канавка бетон"],
+
+/* ---------- МЕТАЛЛ ---------- */
+["Чем резать профильную трубу",
+ "Отрезной круг по металлу 1,0–1,6 мм на УШМ 125, а если рез должен быть строго под угол и в размер — монтажная пила 355 мм. Тонкий круг греет металл меньше и режет быстрее толстого.",
+ "Аллея 46: диски L12–L13 · аллея 49: монтажные пилы L3",
+ "профтруба профильная труба квадрат металл резать"],
+
+["Чем резать нержавейку",
+ "Круг с маркировкой INOX. В обычном круге есть железо, сера и хлор — они остаются в кромке, и через месяц по резу идёт ржавчина. Обороты пониже, без нажима, охлаждать паузами.",
+ "Аллея 46: диски L12–L13",
+ "нержавейка инокс нержавеющая сталь резать"],
+
+["Чем резать арматуру",
+ "Отрезной круг 2,5–3 мм на УШМ 180–230 либо арматурные ножницы. Толстый круг здесь оправдан: важна прочность круга, а не чистота реза.",
+ "Аллея 46: диски L12–L13 · аллея 48: ножницы R4",
+ "арматура пруток резать рубить"],
+
+["Чем резать профлист и металлочерепицу",
+ "Ножницы по металлу или просечные высечные ножницы. <b>УШМ использовать нельзя</b>: искра выжигает полимерное покрытие и цинк по краю реза, кромка начинает ржаветь в первую же зиму. Гарантия на такой лист аннулируется.",
+ "Аллея 48: ножницы по металлу R4",
+ "профлист металлочерепица профнастил сайдинг металл кровля"],
+
+["Чем резать чугун",
+ "Алмазный диск по камню или специальный по чугуну, малые обороты, без ударов. Чугун хрупкий: от нажима и вибрации даёт трещину в стороне от реза.",
+ "Аллея 46: диски L12–L13",
+ "чугун батарея труба резать"],
+
+["Чем сверлить нержавейку и калёное",
+ "Кобальтовое сверло Р6М5К5, низкие обороты, сильная равномерная подача и обязательно масло. Главная ошибка — высокие обороты: сверло синеет и садится за секунды, а нержавейка при этом наклёпывается и становится ещё твёрже.",
+ "Аллея 46: свёрла по металлу L5",
+ "нержавейка каленое сверлить кобальт сверло"],
+
+["Чем резать медную трубу",
+ "Труборез — ровный рез без заусенца и без стружки внутри трубы. Ножовкой можно, но потом обязательно снять фаску и вычистить: стружка уйдёт в систему.",
+ "Аллея 48: ножовки по металлу L6",
+ "медная труба труборез водопровод резать"],
+
+/* ---------- ДЕРЕВО И ПЛИТЫ ---------- */
+["Чем резать ламинат",
+ "Электролобзик с пилкой обратного зуба T101BR — она режет вниз, и лицевая кромка остаётся чистой. Или торцовка с диском на 60–80 зубьев. Обычной пилкой лицом вверх будут сколы по всей длине.",
+ "Аллея 46: пилки L10 · аллея 50: торцовки",
+ "ламинат паркетная доска ламинат резать сколы"],
+
+["Чем резать ЛДСП без сколов",
+ "Диск с 60–80 зубьями, направляющая шина, малярный скотч по линии реза и пиление лицом вниз. Плюс подрезной проход на пару миллиметров, если рез на виду.",
+ "Аллея 46: диски для циркулярок L9",
+ "лдсп дсп мебельный щит сколы кромка резать"],
+
+["Чем резать фанеру и ОСП",
+ "Циркулярная пила по шине, диск 40–60 зубьев. ОСП тупит зубья быстрее фанеры из-за клея и щепы — берите диск с твердосплавными напайками и не жалейте его.",
+ "Аллея 46: диски L9 · циркулярки R3",
+ "фанера осп osb плита резать"],
+
+["Чем пилить брус и доску",
+ "Циркулярная пила с глубиной пропила больше толщины на 10–15 мм, диск 24–40 зубьев. Брус 150 и толще — сабельная или цепная, циркулярка его не берёт за проход.",
+ "Аллея 46: циркулярки R3, диски L9",
+ "брус доска бревно пилить распустить"],
+
+["Чем пилить доски с гвоздями и поддоны",
+ "Сабельная пила с биметаллическим полотном по дереву с гвоздями. Обычное полотно ломает зуб о первый же гвоздь, а диск циркулярки от гвоздя может дать отдачу.",
+ "Аллея 46: сабельные R4",
+ "поддоны демонтаж гвозди доски разобрать"],
+
+["Чем резать МДФ и наличники",
+ "Торцовочная пила с частым зубом, 60–80. МДФ плотный и однородный, крупный зуб рвёт кромку. Пыль от МДФ мелкая и вредная — респиратор нужен.",
+ "Аллея 50: торцовочные пилы · диски",
+ "мдф наличник плинтус дверной добор резать"],
+
+/* ---------- ПЛАСТИК, СТЕКЛО, КРОВЛЯ ---------- */
+["Чем резать поликарбонат",
+ "Циркулярка с частым зубом на малых оборотах или строительный нож по разметке с переломом. Главное — не перегреть: поликарбонат плавится и заваривается за диском. Защитную плёнку снимать после реза.",
+ "Аллея 46: диски L9 · аллея 48: ножи L11",
+ "поликарбонат теплица сотовый резать"],
+
+["Чем резать оргстекло и акрил",
+ "Специальный резак-крючок по разметке с переломом, либо пилка с мелким зубом на малых оборотах. Быстрый рез плавит кромку и даёт трещины от нагрева.",
+ "Аллея 48: ножи L11 · аллея 46: пилки L10",
+ "оргстекло акрил плексиглас резать"],
+
+["Чем резать ПВХ панели и сайдинг",
+ "Строительный нож по разметке или ножовка с мелким зубом. На морозе ПВХ становится хрупким и колется — заносите материал в тепло перед резкой.",
+ "Аллея 48: ножи L11, ножовки L7",
+ "пвх панели сайдинг виниловый резать"],
+
+["Чем резать шифер и ондулин",
+ "Шифер — алмазный или абразивный круг по камню с водой, обязательно респиратор: пыль асбестосодержащая. Ондулин — обычная ножовка по дереву, смоченная мылом, чтобы не залипала в битуме.",
+ "Аллея 46: алмазные L11 · аллея 48: ножовки L7",
+ "шифер ондулин кровля битум резать"],
+
+["Чем сверлить стекло и зеркало",
+ "Алмазная трубчатая коронка, минимальные обороты, обязательное охлаждение водой через бортик из пластилина. Перьевые и обычные свёрла дают скол сразу.",
+ "Аллея 46: коронки по керамике L4",
+ "стекло зеркало сверлить отверстие"],
+
+/* ---------- УТЕПЛИТЕЛЬ, МЯГКОЕ ---------- */
+["Чем резать минвату",
+ "Специальный нож для минваты с длинным зубчатым лезвием или ножовка с крупным зубом. Обычный нож мнёт волокно и даёт неровный край, из-за чего в утеплителе остаются мостики холода.",
+ "Аллея 48: ножи L11, ножовки L7",
+ "минвата минеральная вата утеплитель резать"],
+
+["Чем резать пенопласт и ЭППС",
+ "Терморезак даёт идеальный край без крошки. Из подручного — ножовка с мелким зубом или острый нож с длинным лезвием. Циркулярка крошит и разносит шарики по всему объекту.",
+ "Аллея 48: ножи L11",
+ "пенопласт эппс пеноплекс экструзия утеплитель резать"],
+
+["Чем резать линолеум и кварцвинил",
+ "Строительный нож с новым лезвием и металлическая линейка. Кварцвинил и ламинат ПВХ надрезают и ломают, резать насквозь не нужно. Лезвия менять часто: тупое рвёт кромку.",
+ "Аллея 48: ножи и лезвия L11",
+ "линолеум кварцвинил spc lvt ковролин резать"],
+
+/* ---------- КРЕПЁЖ ПО ОСНОВАНИЯМ ---------- */
+["Как крепить в пустотелый кирпич",
+ "Дюбель для пустотелых оснований — он завязывается узлом в пустоте, а не распирает стенку. Сверлить без удара, иначе выломаете внутренние перегородки и опоры не останется. Тяжёлое — химический анкер с сетчатой гильзой.",
+ "Отдел скобяных изделий",
+ "пустотелый щелевой кирпич крепить дюбель повесить"],
+
+["Как крепить в газобетон",
+ "Специальный винтовой дюбель для ячеистого бетона или химический анкер. Обычный распорный проворачивается: материал пористый и точечную нагрузку не держит.",
+ "Отдел скобяных изделий",
+ "газобетон крепить дюбель анкер повесить"],
+
+["Как повесить телевизор на гипсокартон",
+ "Только в профиль каркаса или в закладную. На дюбелях лист держит до 10 кг, телевизор с кронштейном это 20–40 кг с рычагом. Профиль ищут магнитом по саморезам.",
+ "Отдел скобяных изделий",
+ "телевизор гипсокартон повесить кронштейн гкл"],
+
+["Как крепить бойлер",
+ "Только в капитальную стену анкерами или в сквозную закладную. Полный бойлер на 80 литров это больше центнера. Гипсокартон и газобетон без химического анкера его не держат.",
+ "Отдел скобяных изделий",
+ "бойлер водонагреватель повесить крепить анкер"],
+
+/* ---------- ШЛИФОВКА И ПОДГОТОВКА ---------- */
+["Чем шлифовать шпаклёвку",
+ "Абразивная сетка, а не бумага: сетка не забивается пылью и служит в разы дольше. Ручная тёрка на малых площадях, шлифмашина-жираф с пылесосом на квартире. Боковой свет обязателен, иначе волны не видно.",
+ "Аллея 47: ручное шлифование R8–R9, абразивы R10",
+ "шпаклёвка шлифовать затирать стены сетка"],
+
+["Чем снять старую краску",
+ "Строительный фен со скребком — если слой толстый и это не свинцовая краска. Механически — лепестковый круг или корщётка на УШМ. Химические смывки работают, но требуют времени и вентиляции.",
+ "Аллея 49: фены R13 · аллея 46: круги L12–L13",
+ "старая краска снять содрать смывка фен"],
+
+["Чем убрать ржавчину",
+ "Корщётка или лепестковый круг на УШМ для больших площадей, преобразователь ржавчины для труднодоступного. После зачистки металл сразу грунтовать: чистая сталь ржавеет за часы.",
+ "Аллея 46: круги L12–L13",
+ "ржавчина зачистить корщетка преобразователь"],
+
+/* ---------- ПОДБОР ОСНАСТКИ ---------- */
+["Какой диск на болгарку по бетону",
+ "Алмазный сегментный, сухой рез, лазерная сварка сегментов. Прорези между сегментами охлаждают диск и выбрасывают шлам — без них он клинит и перегревается.",
+ "Аллея 46: алмазные L11",
+ "диск бетон болгарка алмазный сегментный"],
+
+["Какой диск на болгарку по плитке",
+ "Сплошной алмазный обод, без прорезей. Он даёт чистую кромку, но не охлаждается воздухом — нужна вода или частые паузы.",
+ "Аллея 47: диски по плитке R3",
+ "диск плитка керамогранит болгарка сплошной"],
+
+["Какое сверло по бетону",
+ "Бур с твердосплавной напайкой под SDS-plus, только с перфоратором. Двухгранный наконечник быстрее в чистом бетоне, четырёхгранный не соскакивает с арматуры.",
+ "Аллея 46: буры L1–L2",
+ "сверло бетон бур sds победит"],
+
+["Какая пилка для лобзика",
+ "T101B — чистый рез по дереву. T101BR — ламинат, обратный зуб. T118A — металл. T119BO — крутые радиусы. T144D — быстрый грубый рез по дереву.",
+ "Аллея 46: пилки L10",
+ "пилка лобзик t101 t118 маркировка выбрать"],
+
+["Какая коронка под подрозетник",
+ "68 мм с центровочным буром, хвостовик SDS-plus, для перфоратора в режиме сверления с ударом. Керн потом выламывают зубилом в режиме долбления — поэтому нужен перфоратор с тремя режимами.",
+ "Аллея 46: коронки по бетону L3",
+ "коронка подрозетник 68 розетка бетон"]
+
+];
+
+/* Поиск по базе знаний */
+function kbSearch(q){
+  const words = q.toLowerCase().split(/\s+/).filter(w=>w.length>2);
+  if(!words.length) return [];
+  const score = item => {
+    const hay = (item[0]+" "+item[1]+" "+item[3]).toLowerCase();
+    let s = 0;
+    words.forEach(w=>{
+      if(item[0].toLowerCase().includes(w)) s += 3;
+      else if(item[3].toLowerCase().includes(w)) s += 2;
+      else if(hay.includes(w)) s += 1;
+    });
+    return words.every(w=>hay.includes(w)) ? s+2 : (s>=words.length ? s : 0);
+  };
+  return KB.map(x=>[x,score(x)]).filter(x=>x[1]>0)
+           .sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
+}
+
+/* ============ КЛАССИФИКАЦИЯ АЛМАЗНЫХ ДИСКОВ ============ */
+const DISK_TYPES = [
+ ["Сплошной обод (continuous rim)",
+  "Обод без разрывов. Даёт самую чистую кромку без сколов — плитка, керамогранит, стекло, клинкер. Воздухом не охлаждается, поэтому нужен мокрый рез или короткие проходы с паузами. Толщина 1,4–2,0 мм."],
+ ["Сегментный (segmented)",
+  "Обод разрезан на сегменты с широкими прорезями. Прорези охлаждают, выбрасывают шлам и дают металлу расширяться — поэтому им можно резать всухую. Бетон, кирпич, брусчатка, камень. Кромка грубая, плитку сколет."],
+ ["Турбо (turbo)",
+  "Сплошной обод с волнистым рифлением и внутренними рёбрами. Компромисс: чище сегментного, быстрее и холоднее сплошного. Универсал для сухого реза, когда кромка важна, но воду подвести некуда."],
+ ["Турбо-сегментный, часто маркируют как X-тип",
+  "Сегменты с косой или X-образной насечкой. Насечка работает как турбо — гонит воздух и разбивает шлам, а сегменты сохраняют скорость. Ходовой универсальный тип по бетону, кирпичу и камню. Обозначение X-тип у разных производителей своё, смотрите на форму обода, а не на букву."],
+ ["Вакуумная пайка (гальванические)",
+  "Алмаз напаян в один слой на поверхность. Режет очень мягко и не скалывает — для фигурного реза, вырезов в керамограните, подрезки. Ресурс небольшой: слой один, стёрся — диск закончился."],
+ ["Тонкий по керамограниту",
+  "Сплошной или турбо толщиной 1,2–1,4 мм. Тоньше рез — меньше нагрев и скол, но диск деликатнее и не любит перекоса в резе."],
+ ["Сегмент с защитными зубьями",
+  "У основания сегмента дополнительные выступы. Защищают корпус от подмывания абразивным шламом на брусчатке и асфальте — там, где обычный диск проедает корпус раньше, чем сотрутся сегменты."],
+ ["Высота сегмента",
+  "7 мм — бытовой ресурс, 10–12 мм — рабочий. Диск изношен, когда сегмент почти сравнялся с корпусом: дальше он греется и режет медленно."],
+ ["Связка мягкая и твёрдая",
+  "Мягкая связка — по твёрдым материалам: гранит, армированный бетон. Твёрдая — по мягким абразивным: асфальт, песчаник, свежий бетон. Ошибка со связкой видна сразу: диск либо заполировался, либо сгорел за один рез."],
+ ["Сухой и мокрый рез",
+  "Диски для мокрого реза часто со спечёнными сегментами: на болгарке всухую шов перегревается и сегмент может отлететь. Для УШМ берут с лазерной сваркой и пометкой «сухой рез»."]
+];
+
 REF.unshift(
+{id:"disktypes",t:"Алмазные диски: все типы обода",tags:"диск алмазный тип сплошной сегментный турбо x-тип икс вакуумная пайка связка сегмент высота сухой мокрый рез классификация",
+ rows:DISK_TYPES,
+ note:"Смотрите на форму обода, а не на название серии: у каждого производителя своя буква, а физика одна."},
 {id:"pro",t:"Как говорит профессионал",tags:"речь скрипт формулировки профессионально уверенно пауза факт цифра следствие не извиняться",
  rows:PRO_RULES,
  note:"Мастера отличает не запас слов, а структура: факт, цифра, следствие. И умение сказать «сейчас уточню» вместо выдуманного ответа."},
@@ -5799,10 +6122,96 @@ function posLine(id){
 }
 
 
+/* ============ БЫСТРЫЙ ВХОД ПО МАТЕРИАЛУ ============
+   Ноль печати: тапнул материал — увидел все операции по нему. */
+
+const MATERIALS = [
+ ["Керамогранит","керамогранит"],
+ ["Кафель","кафель"],
+ ["Клинкер","клинкер"],
+ ["Мозаика","мозаика"],
+ ["Бетон","бетон"],
+ ["Железобетон","армированный"],
+ ["Газобетон","газобетон"],
+ ["Кирпич","кирпич"],
+ ["Брусчатка","брусчатка"],
+ ["Гранит и мрамор","гранит"],
+ ["Металл","металл"],
+ ["Нержавейка","нержавейка"],
+ ["Профлист","профлист"],
+ ["Арматура","арматура"],
+ ["Трубы","труба"],
+ ["Дерево, брус","брус"],
+ ["Ламинат","ламинат"],
+ ["ЛДСП, МДФ","лдсп"],
+ ["Фанера, ОСП","фанера"],
+ ["Гипсокартон","гипсокартон"],
+ ["Стекло","стекло"],
+ ["Пластик, ПВХ","пвх"],
+ ["Поликарбонат","поликарбонат"],
+ ["Шифер, кровля","шифер"],
+ ["Утеплитель","утеплитель"],
+ ["Линолеум","линолеум"],
+ ["Шпаклёвка","шпаклёвка"],
+ ["Краска","краска"]
+];
+
+/* Подсказки автодополнения — из базы знаний и словаря */
+function suggestions(q){
+  const s = q.trim().toLowerCase();
+  if(s.length < 2) return [];
+  const out = [];
+  KB.forEach(x=>{
+    const hay = (x[0]+" "+x[3]).toLowerCase();
+    if(hay.includes(s)) out.push([x[0], "ответ"]);
+  });
+  Object.keys(SLANG).forEach(w=>{
+    if(w.startsWith(s) || w.includes(s)){
+      const ids = Array.isArray(SLANG[w]) ? SLANG[w] : [SLANG[w]];
+      ids.forEach(id=>{ if(FLOWS[id]) out.push([FLOWS[id].title, "подбор"]); });
+    }
+  });
+  Object.keys(FLOWS).forEach(k=>{
+    if(FLOWS[k].title.toLowerCase().includes(s)) out.push([FLOWS[k].title, "подбор"]);
+  });
+  const seen = new Set(); const uniq = [];
+  out.forEach(x=>{ if(!seen.has(x[0])){ seen.add(x[0]); uniq.push(x); } });
+  return uniq.slice(0, 6);
+}
+
+/* Короткая строка-ответ: главное действие, а не вступление */
+function shortAnswer(text){
+  const plain = s => String(s).replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();
+  const raw = String(text);
+  const sents = raw.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const clean = s => { let t=plain(s)
+      .replace(/^[^.:]{0,60}(поэтому|отсюда|значит)[,:]?\s+/i,"")
+      .replace(/^(Для этого|Здесь|Тут|В этом случае)[,:]?\s+/i,"");
+    return t.charAt(0).toUpperCase()+t.slice(1); };
+  let line = clean(sents[0] || raw);
+  /* если первое предложение слишком короткое — добавляем ключевое */
+  if(line.length < 70){
+    const isMeat = s => /<b>/.test(s) || /(нужен|нужна|нужно|берите|только|нельзя)/i.test(s);
+    const meat = sents.slice(1).find(isMeat) || sents[1];
+    if(meat){ const add=clean(meat); if(add && add!==line) line = line.replace(/[.]$/,"") + ". " + add; }
+  }
+  return line.length>195 ? line.slice(0,190).replace(/[\s,;·]+$/,"")+"…" : line;
+}
+
+/* История запросов за смену */
+function getRecent(){ try{ return JSON.parse(store.get("recentq")||"[]"); }catch(e){ return []; } }
+function pushRecent(q){
+  q = q.trim(); if(q.length < 2) return;
+  const list = getRecent().filter(x=>x.toLowerCase()!==q.toLowerCase());
+  list.unshift(q);
+  store.set("recentq", JSON.stringify(list.slice(0,6)));
+}
+
+
 /* ============ ИНТЕРФЕЙС ============ */
 const app = document.getElementById("app");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], addCode:false, obj:false, aisle:null, qq:"", short:(store.get("short")==="1"), aisleQ:""};
+const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], addCode:false, obj:false, refOpen:null, settings:false, aisle:null, qq:"", short:(store.get("short")==="1"), aisleQ:""};
 
 function go(patch){ Object.assign(S,patch); render(); window.scrollTo({top:0,behavior:"instant"}); }
 function selTab(name){ document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x.dataset.tab===name?"true":"false")); }
@@ -5892,7 +6301,9 @@ function resultsHTML(){
         h += `<div class="eyebrow">Топ запросов в этой аллее</div>` + merged.map(k=>flowCard(k)).join("");
       }
 
-      h += `<div class="eyebrow" style="margin-top:22px">Все направления</div>`;
+      h += `<div class="eyebrow" style="margin-top:22px">Справочники</div>
+        <div class="chips">${REF.slice(0,8).map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>
+        <div class="eyebrow" style="margin-top:22px">Все направления</div>`;
       zones.forEach(z=>{
         h += `<div class="eyebrow">${esc(z)}</div>
           <div class="shelfrow"><span class="lbl">Где</span>
@@ -5916,6 +6327,17 @@ function resultsHTML(){
           <div class="ac">${cnt} категор${cnt%10===1&&cnt%100!==11?"ия":"ий"}</div>
         </div></button>`;
     });
+    const rec = getRecent();
+    if(rec.length){
+      h += `<div class="eyebrow">Недавние запросы</div><div class="recent">`
+        + rec.map(x=>`<button data-req="${esc(x)}">${esc(x)}</button>`).join("") + `</div>`;
+    }
+    h += `<div class="eyebrow">По материалу — без печати</div>
+      <div class="matgrid">${MATERIALS.map(m=>`<button data-req="${esc(m[1])}">${esc(m[0])}</button>`).join("")}</div>`;
+
+
+    h += `<div class="eyebrow">Справочники</div>
+      <div class="chips" style="margin-bottom:14px">${REF.map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>`;
     h += `<button class="aislecard" data-openaisle="__help__" style="border-left-color:var(--alarm)">
         <div class="ab">
           <div class="at">Запрос непонятен</div>
@@ -5926,6 +6348,36 @@ function resultsHTML(){
   }
 
   /* ---- поиск ---- */
+  const qUp = q.toUpperCase().replace(/[^A-ZА-Я0-9 ]/g," ").trim();
+  const posM = qUp.replace(/\s/g,"").match(/^(\d{2})?([LR])(\d+)(\d{2})?$/);
+  const alFilter = (qUp.match(/\b(4[6-9]|50)\b/)||[])[0] || null;
+  const posQ = qUp.match(/\b([LR])(\d+)\b/);
+  if(posQ){
+    const side = posQ[1]==="L" ? "L" : "R";
+    const tag = posQ[1]+posQ[2];
+    Object.keys(SHELF_MAP).filter(al=>!alFilter||al===alFilter).forEach(al=>{
+      SHELF_MAP[al][side].forEach(row=>{
+        const norm=row[0].toUpperCase().replace(/\s/g,"");
+        if(norm===tag || norm.split(/[–-]/).indexOf(tag)>=0){
+          h += `<div class="eyebrow">Аллея ${esc(al)} · ${esc(row[0])}</div>
+            <div class="kb"><div class="kbq">${esc(row[1])}</div>
+            <div class="kbp">Вы стоите здесь. Наберите, что нужно — например «клинкер» или «нержавейка».</div></div>`;
+        }
+      });
+    });
+  }
+  const kb = kbSearch(q);
+  if(kb.length){
+    h += `<div class="oneline">
+      <div class="ol">${esc(shortAnswer(kb[0][1]))}</div>
+      <div class="op">${esc(kb[0][2])}</div></div>`;
+    h += `<div class="eyebrow">Подробно</div>`;
+    kb.forEach((x,i)=>h+=`<div class="kb">
+      ${i===0?`<div class="kbshort">${esc(shortAnswer(x[1]))}<span class="kbpl">${esc(x[2])}</span></div>`:""}
+      <div class="kbq">${esc(x[0])}</div>
+      <div class="kba">${x[1]}</div>
+      ${i===0?"":`<div class="kbp">${esc(x[2])}</div>`}</div>`);
+  }
   const sl = slangHit(q);
   if(sl.length){
     h += `<div class="eyebrow">Клиент сказал так — значит нужен${sl.length>1?" (уточните, что именно)":""}</div>`
@@ -5942,7 +6394,7 @@ function resultsHTML(){
     qas.forEach(x=>h+=`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`); }
   if(cases.length){ h+=`<div class="eyebrow">Кейсы отдела</div>`;
     cases.forEach(c=>h+=`<div class="casecard"><div class="cn">${esc(c.t)}</div><div class="cr">${esc(c.r)}</div></div>`); }
-  if(!keys.length && !refs.length && !kits.length && !cases.length && !qas.length)
+  if(!keys.length && !refs.length && !kits.length && !cases.length && !qas.length && !kb.length)
     h += `<div class="note" style="margin-top:14px">Ничего не нашлось. Попробуйте другое слово: «бетон», «крепёж», «воздух», «резать», «шлифовать», «замер», «смазка».</div>`;
   keys.forEach(k=>h+=flowCard(k));
   if(refs.length){ h+=`<div class="eyebrow">Шпаргалки</div>`;
@@ -5957,8 +6409,10 @@ function resultsHTML(){
 
 function viewList(){
   return `<div class="search">
-    <input id="q" type="search" placeholder="Что спросил клиент? Правило, фитинг, смазка, лебёдка…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
+    <input id="q" type="search" placeholder="Материал или метр полки: клинкер, нержавейка, L9…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
+    <button class="hbtn" id="micBtn" style="background:var(--ink);color:var(--tape);border-color:var(--ink);font-size:18px;padding:0 14px" title="Сказать голосом">🎤</button>
   </div>
+  <div id="sugbox"></div>
   <div id="results">${resultsHTML()}</div>`;
 }
 
@@ -6131,6 +6585,28 @@ function viewClient(){
       <div class="blist"><h3 style="font-family:var(--display);font-size:16px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Что понадобится к нему</h3>
         <ul class="tight">${kit.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
     </div></div>`;
+}
+
+/* ---------- шпаргалка как накладка ---------- */
+function viewRefSheet(){
+  const r = REF.find(x=>x.id===S.refOpen);
+  if(!r) return "";
+  return `<div class="sheet">
+    <div class="sh-top"><div class="t">${esc(r.t)}</div><button data-close="ref">Закрыть</button></div>
+    <div class="sh-body">
+      <div class="block"><ul class="tight">${r.rows.map(x=>`<li><b>${esc(x[0])}</b> — ${x[1]}</li>`).join("")}</ul>
+        <div class="script" style="margin-top:12px"><span class="rl">Главное</span>${esc(r.note)}</div></div>
+      <div class="eyebrow">Другие справки</div>
+      ${REF.filter(x=>x.id!==r.id).map(x=>`<button class="card ref" data-ref="${x.id}"><div class="ct">${esc(x.t)}</div></button>`).join("")}
+      <div class="btnrow"><button class="btn dark" data-close="ref">Назад</button></div>
+    </div></div>`;
+}
+
+/* ---------- настройки как накладка ---------- */
+function viewSettings(){
+  return `<div class="sheet">
+    <div class="sh-top"><div class="t">Настройки и мои данные</div><button data-close="set">Закрыть</button></div>
+    <div class="sh-body">${viewMap()}</div></div>`;
 }
 
 /* ---------- возражения ---------- */
@@ -6710,18 +7186,19 @@ function render(){
   }
   else if(S.tab==="quick") h=viewQuick();
   else if(S.tab==="calc") h=viewCalc();
-  else if(S.tab==="ref") h=viewRef();
   else if(S.tab==="kits") h=viewKits();
-  else h=viewMap();
+  else h=viewList();
 
   if(S.client && S.flow) h += viewClient();
   if(S.deep && S.flow) h += viewDeep();
   if(S.obj && S.flow) h += viewObj();
+  if(S.refOpen) h += viewRefSheet();
+  if(S.settings) h += viewSettings();
   if(S.kitOpen) h += viewKitSheet();
   app.innerHTML=h;
 
   const old=document.getElementById("kitbar"); if(old) old.remove();
-  if(S.kit.length && !S.client && !S.deep && !S.obj){
+  if(S.kit.length && !S.client && !S.deep && !S.obj && !S.refOpen && !S.settings){
     const bar=document.createElement("div");
     bar.id="kitbar";
     bar.innerHTML = `<div class="kc">Комплект <b>${S.kit.length}</b></div>
@@ -6731,7 +7208,7 @@ function render(){
     document.getElementById("kitShow").onclick=()=>go({kitOpen:true});
     document.getElementById("kitClear").onclick=()=>go({kit:[],kitOpen:false});
   }
-  document.body.style.overflow = (S.client||S.kitOpen||S.deep||S.obj) ? "hidden" : "";
+  document.body.style.overflow = (S.client||S.kitOpen||S.deep||S.obj||S.refOpen||S.settings) ? "hidden" : "";
   wire();
   if(S.tab==="calc") wireCalc();
 }
@@ -6739,13 +7216,10 @@ function render(){
 function wireCards(){
   app.querySelectorAll("[data-flow]").forEach(b=>b.onclick=()=>{
     bumpUsage(b.dataset.flow);
+    if(S.q) pushRecent(S.q);
     go({flow:b.dataset.flow,step:0,ans:[],close:[],addCode:false});
   });
-  app.querySelectorAll("[data-ref]").forEach(b=>b.onclick=()=>{
-    const id="ref:"+b.dataset.ref;
-    if(S.tab!=="ref") selTab("ref");
-    go({tab:"ref",open:S.open===id?null:id});
-  });
+  app.querySelectorAll("[data-ref]").forEach(b=>b.onclick=()=>go({refOpen:b.dataset.ref}));
   app.querySelectorAll("[data-kit]").forEach(b=>b.onclick=()=>{
     const id="kit:"+b.dataset.kit;
     if(S.tab!=="kits") selTab("kits");
@@ -6756,11 +7230,41 @@ function wireCards(){
 function wire(){
   const q=document.getElementById("q");
   if(q){
-    const upd = () => { S.q = q.value; const box=document.getElementById("results");
+    const drawSug = () => {
+      const sb=document.getElementById("sugbox"); if(!sb) return;
+      const list = suggestions(q.value);
+      if(!list.length || q.value.trim().length<2){ sb.innerHTML=""; return; }
+      sb.innerHTML = `<div class="sug">` + list.map(x=>
+        `<button data-req="${esc(x[0])}">${esc(x[0])}<span class="tagx">${esc(x[1])}</span></button>`).join("") + `</div>`;
+      sb.querySelectorAll("[data-req]").forEach(b=>b.onclick=()=>{
+        pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
+      });
+    };
+    const upd = () => { S.q = q.value; drawSug();
+      const box=document.getElementById("results");
       if(box){ box.innerHTML = resultsHTML(); wireCards(); } };
     q.addEventListener("input", upd);
     q.addEventListener("keyup", upd);
     q.addEventListener("search", upd);
+    q.addEventListener("change", ()=>pushRecent(q.value));
+    q.addEventListener("blur", ()=>{ setTimeout(()=>{ const sb=document.getElementById("sugbox"); if(sb) sb.innerHTML=""; }, 200); });
+
+    const mic=document.getElementById("micBtn");
+    if(mic){
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(SR){
+        mic.onclick=()=>{
+          const r=new SR(); r.lang="ru-RU"; r.interimResults=false; r.maxAlternatives=1;
+          mic.textContent="●";
+          r.onresult=e=>{ const t=e.results[0][0].transcript; pushRecent(t); go({q:t, aisle:null}); };
+          r.onerror=()=>{ mic.textContent="🎤"; q.focus(); };
+          r.onend=()=>{ mic.textContent="🎤"; };
+          try{ r.start(); }catch(err){ mic.textContent="🎤"; q.focus(); }
+        };
+      } else {
+        mic.onclick=()=>{ q.focus(); };
+      }
+    }
   }
 
   wireCards();
@@ -6780,6 +7284,9 @@ function wire(){
   app.querySelectorAll("[data-shelf]").forEach(inp=>inp.oninput=e=>{
     store.set("shelf:"+inp.dataset.shelf, e.target.value);
   });
+  app.querySelectorAll("[data-req]").forEach(b=>b.onclick=()=>{
+    pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
+  });
   app.querySelectorAll("[data-openaisle]").forEach(b=>b.onclick=()=>go({aisle:b.dataset.openaisle}));
   const ab=document.getElementById("aisleBack"); if(ab) ab.onclick=()=>go({aisle:null});
   app.querySelectorAll("[data-add]").forEach(el=>el.onclick=()=>{
@@ -6791,7 +7298,8 @@ function wire(){
   });
   app.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{
     const w=b.dataset.close;
-    go(w==="client"?{client:false}:(w==="deep"?{deep:false}:(w==="obj"?{obj:false}:{kitOpen:false})));
+    const map={client:{client:false},deep:{deep:false},obj:{obj:false},ref:{refOpen:null},set:{settings:false}};
+    go(map[w]||{kitOpen:false});
   });
   app.querySelectorAll("[data-aisle]").forEach(b=>b.onclick=()=>{
     go({aisleQ: S.aisleQ===b.dataset.aisle ? "" : b.dataset.aisle});
@@ -6831,6 +7339,19 @@ function wire(){
     store.set("aisle:"+inp.dataset.zone, e.target.value);
     const s=document.getElementById("saved"); if(s){ s.textContent="Сохранено"; clearTimeout(s._t); s._t=setTimeout(()=>s.textContent="",1400); }
   });
+  const sb2=document.getElementById("setBtn");
+  if(sb2) sb2.onclick=()=>go({settings:true});
+  const uh=document.getElementById("updHead");
+  if(uh) uh.onclick=()=>{
+    if(!navigator.onLine){ uh.textContent="Нет сети"; setTimeout(()=>uh.textContent="Обновить",2000); return; }
+    uh.textContent="Обновляю…";
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.getRegistrations().then(rs=>{
+        Promise.all(rs.map(r=>r.update())).then(()=>setTimeout(()=>location.reload(true),900));
+      }).catch(()=>location.reload(true));
+    } else location.reload(true);
+  };
+
   const nd=document.getElementById("netDot"), nt2=document.getElementById("netTxt");
   if(nd&&nt2){
     if(navigator.onLine){ nd.style.background="var(--ok)"; nt2.textContent="Связь есть — обновления доступны"; }
