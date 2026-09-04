@@ -342,6 +342,13 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .kbshort{background:var(--ink);color:#fff;font-size:16px;line-height:1.45;padding:12px;border-radius:2px;margin-bottom:11px;font-weight:600}
 .kbshort .kbpl{display:block;font-family:var(--mono);font-size:11px;color:var(--tape);font-weight:400;
   margin-top:7px;letter-spacing:.05em}
+
+.kbform{background:var(--card);border:2px solid var(--ink);border-left:5px solid var(--ok);padding:14px;margin-top:10px;border-radius:2px}
+.kbform .kbfh{font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.kbform .kbfn{font-size:13px;color:var(--ink-2);margin-bottom:12px}
+.kbform input,.kbform textarea{width:100%;font:inherit;font-size:15px;padding:11px;border:2px solid var(--ink);
+  border-radius:2px;background:#fff;margin-bottom:8px}
+.kbform textarea{min-height:90px}
 .hide{display:none}
 .foot{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:center;padding:26px 0 10px;line-height:1.6}
 @media(prefers-reduced-motion:no-preference){
@@ -3645,7 +3652,7 @@ function topUsed(n){
 
 /* ============ ОБМЕН НАСТРОЙКАМИ ============ */
 function exportData(){
-  const data={v:3,aisle:{},shelf:{},notes:store.get("notes")||"",cases:getCases(),codes:getCodes()};
+  const data={v:4,aisle:{},shelf:{},notes:store.get("notes")||"",cases:getCases(),codes:getCodes(),mykb:getMyKB()};
   ZONES.forEach(z=>{ const v=store.get("aisle:"+z); if(v) data.aisle[z]=v;
                      const s=store.get("shelf:"+z); if(s) data.shelf[z]=s; });
   try{ return btoa(unescape(encodeURIComponent(JSON.stringify(data)))); }
@@ -3659,6 +3666,11 @@ function importData(code){
   if(obj.aisle) Object.keys(obj.aisle).forEach(z=>store.set("aisle:"+z,obj.aisle[z]));
   if(obj.shelf) Object.keys(obj.shelf).forEach(z=>store.set("shelf:"+z,obj.shelf[z]));
   if(obj.notes) store.set("notes",obj.notes);
+  if(Array.isArray(obj.mykb)){
+    const cur=getMyKB(), keys=new Set(cur.map(x=>x.q.toLowerCase()));
+    obj.mykb.forEach(x=>{ if(!keys.has(String(x.q).toLowerCase())) cur.push(x); });
+    setMyKB(cur);
+  }
   if(Array.isArray(obj.codes)){
     const cur=getCodes(), ids=new Set(cur.map(c=>c.id));
     obj.codes.forEach(c=>{ if(!ids.has(c.id)) cur.push(c); });
@@ -4838,6 +4850,22 @@ const KB = [
 ];
 
 /* Поиск по базе знаний */
+/* ---- своя база: записи, добавленные прямо в зале ---- */
+function getMyKB(){ try{ return JSON.parse(store.get("mykb")||"[]"); }catch(e){ return []; } }
+function setMyKB(v){ store.set("mykb", JSON.stringify(v)); }
+
+/* ---- журнал запросов, на которые не нашлось ответа ---- */
+function getMisses(){ try{ return JSON.parse(store.get("misses")||"[]"); }catch(e){ return []; } }
+function logMiss(q){
+  q=(q||"").trim(); if(q.length<3) return;
+  const list=getMisses().filter(x=>x.toLowerCase()!==q.toLowerCase());
+  list.unshift(q);
+  store.set("misses", JSON.stringify(list.slice(0,60)));
+}
+function clearMisses(){ store.set("misses","[]"); }
+
+function kbAll(){ return KB.concat(getMyKB().map(x=>[x.q,x.a,x.p||"",x.t||x.q])); }
+
 function kbSearch(q){
   const words = q.toLowerCase().split(/\s+/).filter(w=>w.length>2);
   if(!words.length) return [];
@@ -4851,7 +4879,7 @@ function kbSearch(q){
     });
     return words.every(w=>hay.includes(w)) ? s+2 : (s>=words.length ? s : 0);
   };
-  return KB.map(x=>[x,score(x)]).filter(x=>x[1]>0)
+  return kbAll().map(x=>[x,score(x)]).filter(x=>x[1]>0)
            .sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
 }
 
@@ -6161,6 +6189,9 @@ function suggestions(q){
   const s = q.trim().toLowerCase();
   if(s.length < 2) return [];
   const out = [];
+  getMyKB().forEach(x=>{
+    if((x.q+" "+(x.t||"")).toLowerCase().includes(s)) out.push([x.q, "своя запись"]);
+  });
   KB.forEach(x=>{
     const hay = (x[0]+" "+x[3]).toLowerCase();
     if(hay.includes(s)) out.push([x[0], "ответ"]);
@@ -6211,7 +6242,7 @@ function pushRecent(q){
 /* ============ ИНТЕРФЕЙС ============ */
 const app = document.getElementById("app");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], addCode:false, obj:false, refOpen:null, settings:false, aisle:null, qq:"", short:(store.get("short")==="1"), aisleQ:""};
+const S = {tab:"ask", flow:null, step:0, ans:[], open:null, q:"", kit:[], client:false, kitOpen:false, deep:false, close:[], addCode:false, obj:false, refOpen:null, settings:false, addKb:false, aisle:null, qq:"", short:(store.get("short")==="1"), aisleQ:""};
 
 function go(patch){ Object.assign(S,patch); render(); window.scrollTo({top:0,behavior:"instant"}); }
 function selTab(name){ document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x.dataset.tab===name?"true":"false")); }
@@ -6376,6 +6407,7 @@ function resultsHTML(){
       ${i===0?`<div class="kbshort">${esc(shortAnswer(x[1]))}<span class="kbpl">${esc(x[2])}</span></div>`:""}
       <div class="kbq">${esc(x[0])}</div>
       <div class="kba">${x[1]}</div>
+      ${getMyKB().some(m=>m.q===x[0]) ? `<button class="minibtn del" data-delkb="${esc(x[0])}" style="margin-top:8px">Своя запись · удалить</button>` : ""}
       ${i===0?"":`<div class="kbp">${esc(x[2])}</div>`}</div>`);
   }
   const sl = slangHit(q);
@@ -6395,7 +6427,24 @@ function resultsHTML(){
   if(cases.length){ h+=`<div class="eyebrow">Кейсы отдела</div>`;
     cases.forEach(c=>h+=`<div class="casecard"><div class="cn">${esc(c.t)}</div><div class="cr">${esc(c.r)}</div></div>`); }
   if(!keys.length && !refs.length && !kits.length && !cases.length && !qas.length && !kb.length)
-    h += `<div class="note" style="margin-top:14px">Ничего не нашлось. Попробуйте другое слово: «бетон», «крепёж», «воздух», «резать», «шлифовать», «замер», «смазка».</div>`;
+    logMiss(S.q);
+    h += `<div class="note" style="margin-top:14px">Ничего не нашлось. Попробуйте другое слово: «бетон», «крепёж», «резать», «шлифовать», «замер», «смазка».</div>
+      ${S.addKb ? `<div class="kbform">
+          <div class="kbfh">Записать ответ в базу</div>
+          <div class="kbfn">Один раз запишете — приложение будет находить это всегда. Запись останется у вас и уйдёт коллегам вместе с кодом настроек.</div>
+          <input id="nkq" placeholder="Запрос, как спрашивают" value="${esc(S.q)}" autocomplete="off">
+          <textarea id="nka" placeholder="Ответ: чем делать, каким режимом, о чём предупредить"></textarea>
+          <input id="nkp" placeholder="Где взять: например «Аллея 47, R3»" autocomplete="off">
+          <input id="nkt" placeholder="Другие слова для поиска через пробел (необязательно)" autocomplete="off">
+          <div class="btnrow" style="margin-top:4px">
+            <button class="btn primary" id="nkSave">Сохранить в базу</button>
+            <button class="btn" id="nkCancel">Отмена</button>
+          </div>
+          <div class="saved" id="nkMsg"></div>
+        </div>`
+      : `<div class="btnrow" style="margin-top:10px">
+          <button class="btn primary" id="nkAdd">Записать ответ в базу</button>
+        </div>`}`;
   keys.forEach(k=>h+=flowCard(k));
   if(refs.length){ h+=`<div class="eyebrow">Шпаргалки</div>`;
     refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
@@ -6747,6 +6796,27 @@ function viewMap(){
         </div>`).join("")).join("");
   })()}
 
+  <div class="eyebrow">Своя база ответов</div>
+  <div class="note">Записи, которые вы добавили в зале. Приложение ищет их наравне с основной базой.</div>
+  <div style="height:8px"></div>
+  ${getMyKB().length ? getMyKB().map(x=>`<div class="kb">
+      <div class="kbq">${esc(x.q)}</div>
+      <div class="kba">${esc(x.a)}</div>
+      ${x.p?`<div class="kbp">${esc(x.p)}</div>`:""}
+      <button class="minibtn del" data-delkb="${esc(x.q)}" style="margin-top:9px">Удалить</button>
+    </div>`).join("") : '<div class="note">Пока пусто. Когда поиск ничего не найдёт — там появится кнопка «Записать ответ в базу».</div>'}
+
+  <div class="eyebrow">Что искали и не нашли</div>
+  <div class="note">Приложение само запоминает запросы без ответа. Скопируйте список и пришлите — эти записи попадут в основную базу для всех.</div>
+  <div style="height:8px"></div>
+  ${getMisses().length ? `<div class="chips">${getMisses().map(x=>`<span class="chip pickable" data-req="${esc(x)}" style="cursor:pointer">${esc(x)}</span>`).join("")}</div>
+     <div class="btnrow" style="margin-top:10px">
+       <button class="btn dark" id="missCopy">Скопировать список</button>
+       <button class="btn" id="missClear">Очистить</button>
+     </div>
+     <div class="saved" id="missMsg"></div>`
+   : '<div class="note">Пусто — значит на всё нашёлся ответ.</div>'}
+
   <div class="eyebrow">Кейсы отдела</div>
   <div class="note">Писать руками не обязательно. В конце любого подбора есть кнопка «Запомнить случай» — она сама запишет вопрос, ответ и комплект. Здесь можно дописать одну строку или удалить лишнее. Кейсы находятся обычным поиском.</div>
   <div style="height:8px"></div>
@@ -6766,7 +6836,7 @@ function viewMap(){
   <div class="verbox">
     <span class="dot" style="background:var(--ok)"></span>Версия приложения: <b>${APP_VERSION}</b> от ${APP_DATE}<br>
     <span class="dot" id="netDot" style="background:var(--ink-3)"></span><span id="netTxt">Проверяю связь…</span><br>
-    Категорий: ${Object.keys(FLOWS).length} · шпаргалок: ${REF.length} · марок: ${BRANDS.length}<br>Своих ЛМ-кодов внесено: <b>${getCodes().length}</b>
+    Категорий: ${Object.keys(FLOWS).length} · шпаргалок: ${REF.length} · марок: ${BRANDS.length}<br>Своих ЛМ-кодов: <b>${getCodes().length}</b> · своих ответов: <b>${getMyKB().length}</b>
   </div>
   <div style="height:8px"></div>
   <div class="note">Если у коллеги другая цифра версии — он открыл старую копию. Пусть нажмёт кнопку ниже при включённом интернете.</div>
@@ -7249,7 +7319,25 @@ function wire(){
     q.addEventListener("change", ()=>pushRecent(q.value));
     q.addEventListener("blur", ()=>{ setTimeout(()=>{ const sb=document.getElementById("sugbox"); if(sb) sb.innerHTML=""; }, 200); });
 
-    const mic=document.getElementById("micBtn");
+    const nkA=document.getElementById("nkAdd");
+  if(nkA) nkA.onclick=()=>go({addKb:true});
+  const nkC=document.getElementById("nkCancel");
+  if(nkC) nkC.onclick=()=>go({addKb:false});
+  const nkS=document.getElementById("nkSave");
+  if(nkS) nkS.onclick=()=>{
+    const g=id=>((document.getElementById(id)||{}).value||"").trim();
+    const q=g("nkq"), a=g("nka");
+    if(!q||!a){ const m=document.getElementById("nkMsg"); if(m) m.textContent="Нужны запрос и ответ"; return; }
+    const list=getMyKB();
+    list.unshift({q:q, a:a, p:g("nkp"), t:(q+" "+g("nkt")).trim(), d:new Date().toLocaleDateString("ru-RU")});
+    setMyKB(list);
+    go({addKb:false, q:q});
+  };
+  app.querySelectorAll("[data-delkb]").forEach(b=>b.onclick=()=>{
+    setMyKB(getMyKB().filter(x=>x.q!==b.dataset.delkb)); render();
+  });
+
+  const mic=document.getElementById("micBtn");
     if(mic){
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if(SR){
@@ -7417,6 +7505,15 @@ function wire(){
     const s=document.getElementById("caseMsg");
     if(s){ s.textContent="Записано — правьте во вкладке «Моё»"; clearTimeout(s._t); s._t=setTimeout(()=>s.textContent="",2600); }
   };
+
+  const mc=document.getElementById("missCopy");
+  if(mc) mc.onclick=()=>{
+    const txt="Не нашлось в приложении ЦЕХ:\n"+getMisses().map(x=>"— "+x).join("\n");
+    if(navigator.share){ navigator.share({text:txt}).catch(()=>copy(txt,"missMsg","Скопировано")); }
+    else copy(txt,"missMsg","Список скопирован");
+  };
+  const mcl=document.getElementById("missClear");
+  if(mcl) mcl.onclick=()=>{ clearMisses(); render(); };
 
   const ca=document.getElementById("caseAdd");
   if(ca) ca.onclick=()=>{
