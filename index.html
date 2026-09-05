@@ -360,6 +360,18 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .artc .artad{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
 .artc .arttop{font-family:var(--mono);font-size:10px;color:var(--tape-dark);text-transform:uppercase;
   letter-spacing:.1em;margin-top:6px}
+
+.gam{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:2px;overflow:hidden;background:var(--card)}
+.gamrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;
+  border-bottom:1px solid var(--line);padding:12px 13px;font:inherit;color:inherit}
+.gamrow:last-child{border-bottom:0}
+.gamrow:active{background:var(--tape)}
+.gamrow .gp{flex:0 0 92px;font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--tape);
+  padding:4px 6px;border-radius:2px;text-align:center;letter-spacing:.02em}
+.gamrow .gn{flex:1;font-size:14.5px;font-weight:600;line-height:1.25}
+.gamrow .gc{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+.hbtn.rec, #micBtn.rec{background:var(--alarm)!important;color:#fff!important;border-color:var(--alarm)!important}
 .hide{display:none}
 .foot{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:center;padding:26px 0 10px;line-height:1.6}
 @media(prefers-reduced-motion:no-preference){
@@ -393,7 +405,6 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
     <button class="tab" data-tab="ask" aria-selected="true">Подбор</button>
     <button class="tab" data-tab="quick" aria-selected="false">Ответ</button>
     <button class="tab" data-tab="calc" aria-selected="false">Счёт</button>
-    <button class="tab" data-tab="kits" aria-selected="false">Наборы</button>
   </div></nav>
 </header>
 
@@ -2232,7 +2243,7 @@ gubcy:{
 /* ==================== СБОРКА ВСЕХ КАТЕГОРИЙ ==================== */
 Object.assign(FLOWS, FLOWS_A, FLOWS_B, FLOWS_C);
 
-["Станки и распиловочное оборудование","Компрессоры и пневмоинструмент","Фитинги и пневмооснастка",
+["Компрессоры и пневмоинструмент","Фитинги и пневмооснастка",
  "Мойки высокого давления","Сварочное оборудование","Генераторы и электростанции",
  "Заточные станки и точила","Отвёртки, биты, наборы","Ключи, головки, трещотки",
  "Стусла, ножовки, столярка","Измерение: рулетки, дальномеры, нивелиры"
@@ -9148,9 +9159,9 @@ function artList(){
 /* Человеческий адрес из кода */
 function artAddr(x){
   if(x.al==="?") return "Адрес: "+x.pos;
-  const side = x.pos[0]==="L" ? "левая сторона" : "правая сторона";
+  const side = x.pos[0]==="L" ? "слева" : "справа";
   const met  = x.pos.slice(1);
-  return "Аллея "+x.al+" · "+side+", метр "+met+(x.pol?" · полка "+x.pol:"");
+  return x.al+" аллея · "+side+" · "+met+" метр"+(x.pol?" · полка "+x.pol:"");
 }
 function artShort(x){ return x.al==="?" ? x.pos : (x.al+" · "+x.pos+(x.pol?"-K"+x.pol:"")); }
 
@@ -9189,6 +9200,14 @@ function artStem(w){
   w=w.replace(/ё/g,"е");
   return w.length>5 ? w.slice(0,5) : w;      /* каталог пишет сокращённо: ЛЕПЕСТ., ШЛИФ. */
 }
+/* «кота» не должно совпадать с «триКОТАж»: ищем только с начала слова */
+const WB = {};
+function hasWord(hay, st){
+  if(st.length<3) return false;
+  let re = WB[st];
+  if(!re){ re = WB[st] = new RegExp("(^|[^а-яa-z0-9])"+st.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")); }
+  return re.test(hay);
+}
 function artSearch(q, limit){
   const qn = q.toLowerCase().replace(/ё/g,"е");
   const artQ = (qn.match(/\d{6,}/g)||[]);
@@ -9196,7 +9215,7 @@ function artSearch(q, limit){
     const byArt = artList().filter(x=>artQ.some(d=>x.a.indexOf(d)===0));
     if(byArt.length) return byArt.slice(0, limit||8);
   }
-  const words = artExpand(qn).filter(w=>w.length>2 && !/^\d/.test(w));
+  const words = artExpand(qn).filter(w=>w.length>2 && !/^\d/.test(w) && !STOP.has(w));
   const stems = [];
   words.forEach(w=>{ const s=artStem(w); if(stems.indexOf(s)<0) stems.push(s); });
   if(!stems.length) return [];
@@ -9205,11 +9224,12 @@ function artSearch(q, limit){
   artList().forEach(x=>{
     const n=x.n.toLowerCase().replace(/ё/g,"е");
     let hit=0;
-    stems.forEach(st=>{ if(n.indexOf(st)>=0) hit++; });
+    stems.forEach(st=>{ if(hasWord(n,st)) hit++; });
     if(!hit) return;
+    if(stems.length>1 && hit<2) return;
     const ratio = hit/stems.length;
-    if(stems.length>1 && ratio<0.4) return;
     let s = hit*4 + Math.round(ratio*10);
+    if(stems.some(st=>n.indexOf(st)===0)) s+=6;   /* название начинается с искомого слова */
     sizes.forEach(d=>{ if(new RegExp("(^|[^0-9])"+d+"([^0-9]|$)").test(n)) s+=5; });
     if(x.top) s+=1;
     res.push([x,s]);
@@ -9222,6 +9242,42 @@ function artAtPos(al, pos){
   return artList().filter(x=>x.al===String(al) && x.pos===pos);
 }
 
+
+/* ============ ЭЛЕКТРИКА И ПРОВОД ============ */
+const KB_ELEC = [
+
+["Чем резать кабель",
+ "<b>Кабелерез</b> — он режет жилу, а не сминает её. Ножницами по металлу и бокорезами многожильный кабель плющит, и потом он плохо садится в клемму. Толстый алюминий и медь от 16 мм² — только кабелерез с храповиком. <b>Болгаркой кабель не режут никогда</b>, даже обесточенный: искра плюс изоляция.",
+ "Аллея 48: кусачки и ножницы R4",
+ "кабель кабеля провод жила резать перекусить отрезать кабелерез бокорезы многожильный медь алюминий"],
+
+["Чем снять изоляцию с провода",
+ "<b>Стриппер</b> — он снимает оболочку и не режет жилу. Ножом можно, но на многожильном почти всегда подрезаются проволочки, а это нагрев в клемме и потом оплавленная розетка. Для тонких проводов берите съёмник с регулировкой глубины.",
+ "Аллея 48: инструмент для электрики R4–R5",
+ "изоляция снять зачистить провод кабель стриппер съемник оболочка зачистка жилы"],
+
+["Чем обжать наконечник на провод",
+ "Пресс-клещи под тип наконечника: для втулочных НШВИ — четырёхгранный обжим, для кольцевых — свой профиль. Пассатижами обжимать нельзя: соединение будет греться и со временем подгорит.",
+ "Аллея 48: клещи R3, электрика R5",
+ "обжать обжим наконечник гильза ншви пресс клещи провод кабель клемма"],
+
+["Чем найти проводку в стене",
+ "Детектор проводки. В панельных домах провода идут не по нормам, а как положили строители — по диагонали, где угодно. Перед любым сверлением в стену это обязательная проверка: перебитый кабель дороже перфоратора, а удар током дороже всего.",
+ "Аллея 46: детекторы · аллея 48: измерение L1–L4",
+ "проводка найти детектор искатель провод в стене сверлить безопасно скрытая"],
+
+["Чем работать под напряжением",
+ "Никак — сначала обесточить. Диэлектрический инструмент с маркировкой <b>1000 В</b> это страховка от ошибки, а не разрешение лезть в живой щит. Порядок один: автомат вниз, проверили индикатором, работаем.",
+ "Аллея 48: диэлектрический инструмент R5",
+ "под напряжением электричество щит автомат диэлектрический 1000в индикатор безопасно электрик"],
+
+["Чем резать кабель-канал",
+ "Ножовка с мелким зубом или торцовочная пила с частым зубом — так угол получается ровный и стык не расходится. Строительным ножом можно только тонкий, и кромка будет рваной.",
+ "Аллея 48: ножовки L7, стусла L8",
+ "кабель канал короб пластиковый резать пилить угол стык"]
+
+];
+KB.push.apply(KB, KB_ELEC);
 
 /* ---- своя база: записи, добавленные прямо в зале ---- */
 function getMyKB(){ try{ return JSON.parse(store.get("mykb")||"[]"); }catch(e){ return []; } }
@@ -9269,29 +9325,41 @@ function stem(w){
   return w.length>5 ? w.slice(0,w.length-2) : (w.length>4 ? w.slice(0,w.length-1) : w);
 }
 
+/* Слова-связки: сами по себе ничего не значат */
+const STOP = new Set(["чем","что","как","какой","какая","какое","какие","каким","нужен","нужна","нужно","нужны",
+ "надо","можно","лучше","для","под","над","при","без","или","это","этот","эта","мне","вам","him",
+ "резать","резка","режет","пилить","сверлить","крепить","клеить","шлифовать","делать","взять","купить",
+ "выбрать","подобрать","есть","где","когда","почему","зачем","сколько","стоит","штука","штуку",
+ "закрываетесь","открываетесь","работаете","касса","кассы","цена","цену","скидка","привет","здравствуйте",
+ "спасибо","пожалуйста","подскажите","скажите","покажите","дайте","хочу","нужный","лучше","хороший"]);
+function contentWords(q){
+  return q.toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/)
+          .filter(w=>w.length>2 && !STOP.has(w));
+}
+
 function kbSearch(q){
-  const raw = expandQuery(q).filter(w=>w.length>2);
+  const content = contentWords(q);
+  const raw = expandQuery(q).filter(w=>w.length>2 && !STOP.has(w));
   if(!raw.length) return [];
-  const orig = q.toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).filter(w=>w.length>2);
   const stems = raw.map(stem);
-  const score = item => {
+  const need  = content.map(stem);          /* значимые слова самого запроса */
+  const res=[];
+  kbAll().forEach(item=>{
     const title=(item[0]||"").toLowerCase().replace(/ё/g,"е");
     const tags =String(item[3]||"").toLowerCase().replace(/ё/g,"е");
     const body =String(item[1]||"").toLowerCase().replace(/ё/g,"е");
-    const hay  = title+" "+tags+" "+body;
-    let s=0, hitOrig=0;
-    stems.forEach((st,i)=>{
-      if(title.includes(st)) s+=4;
-      else if(tags.includes(st)) s+=3;
-      else if(body.includes(st)) s+=1;
+    const key  = title+" "+tags;             /* заголовок и теги — то, о чём запись */
+    /* КАЖДОЕ значимое слово запроса должно найтись в заголовке или тегах */
+    if(need.length && !need.every(w=>hasWord(key,w))) return;
+    let s=0;
+    stems.forEach(st=>{
+      if(hasWord(title,st)) s+=4;
+      else if(hasWord(tags,st)) s+=3;
+      else if(hasWord(body,st)) s+=1;
     });
-    orig.forEach(w=>{ if(hay.includes(stem(w))) hitOrig++; });
-    if(hitOrig===orig.length) s+=4;              /* совпали все слова запроса */
-    else if(hitOrig>=Math.ceil(orig.length/2)) s+=1;
-    return s;
-  };
-  return kbAll().map(x=>[x,score(x)]).filter(x=>x[1]>=4)
-           .sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
+    if(s>=3) res.push([item,s]);
+  });
+  return res.sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
 }
 
 /* ============ КЛАССИФИКАЦИЯ АЛМАЗНЫХ ДИСКОВ ============ */
@@ -9367,7 +9435,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "31";
+const APP_VERSION = "33";
 const APP_DATE = "04.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -10387,11 +10455,126 @@ Object.assign(CARE,{
 });
 
 
+/* Структура аллей — построена из каталога: аллея, метр, гамма, число позиций */
+const GAMMA = [
+  ["46","L1","Бур",76],
+  ["46","L2","Бур",75],
+  ["46","L3","Коронка, Зубило",58],
+  ["46","L4","Сверло, Коронка",134],
+  ["46","L5","Сверло",144],
+  ["46","L6","Сверло, Коронка",93],
+  ["46","L7","Сверло, Коронка, Патрон",83],
+  ["46","L8","Бита, Биты, Наборы",133],
+  ["46","L9","Диск",28],
+  ["46","L10","Пилка",95],
+  ["46","L11","Диск, Алмазный",44],
+  ["46","L12","Диск, Круг",53],
+  ["46","L13","Круг, Чашка",45],
+  ["46","R1","Перфораторы",10],
+  ["46","R2","Дрель, Миксер, Перфораторы",18],
+  ["46","R3","Пила, Лобзики",22],
+  ["46","R4","Фрезер, Пила, Реноватор",27],
+  ["47","L1","Правило",6],
+  ["47","L2","Правило",6],
+  ["47","L3","Ведро, Емкость, Крышка",8],
+  ["47","L4","Емкость",6],
+  ["47","L5","Емкость",5],
+  ["47","L6","Насадки-миксеры",9],
+  ["47","L7","Кельма, Тёрки",19],
+  ["47","L8","Валик, Лезвие, Рубанок",14],
+  ["47","L9","Шпатель",21],
+  ["47","L10","Шпатель",16],
+  ["47","L11","Нож, Лезвия",43],
+  ["47","L12","Пистолет, Скребок, Валик",29],
+  ["47","L13","Щётки",43],
+  ["47","R1","Плиткорез",2],
+  ["47","R2","Плиткорез",4],
+  ["47","R3","Коронка, Диск",64],
+  ["47","R4","Круг, Плиткорез",16],
+  ["47","R5","Насадка",3],
+  ["47","R6","Шпатель, Гладилка",22],
+  ["47","R7","Шпатель",39],
+  ["47","R8","Лист, Рулон",47],
+  ["47","R9","Лист, Водостойкая, Листы",69],
+  ["47","R10","Диск, Круг, Диски",40],
+  ["47","R12","Диск, Круг",52],
+  ["47","R13","Листы, Лента",52],
+  ["48","L1","Рулетка, Дальномер",43],
+  ["48","L2","Нивелир, Детектор",22],
+  ["48","L3","Нивелир",32],
+  ["48","L4","Маркеры, Маркер, Угольник",71],
+  ["48","L5","Уровень, Линейка",43],
+  ["48","L6","Полотно, Ножовка, Держатель",37],
+  ["48","L7","Пила, Ножовка",23],
+  ["48","L8","Пила, Стусло",8],
+  ["48","L9","Струбцина",24],
+  ["48","L10","Струбцина",27],
+  ["48","L11","Напильник, Набор, Стамеска",52],
+  ["48","L12","Скобы, Степлер, Гвозди",25],
+  ["48","L13","Заклёпочники, Пистолет, Стержни",23],
+  ["48","R1","Отвёртки",81],
+  ["48","R2","Отвёртки, Набор, Ключ",76],
+  ["48","R3","Плоскогубцы, Длинногубцы",89],
+  ["48","R4","Ножницы, Клещи",63],
+  ["48","R5","Клещи, Плоскогубцы",74],
+  ["48","R6","Ключ",117],
+  ["48","R7","Ключ, Набор",70],
+  ["48","R8","Головка",143],
+  ["48","R9","Набор",14],
+  ["48","R10","Ломы-гвоздодёры, Зубило, Кернер",23],
+  ["48","R11","Кувалда, Киянка",23],
+  ["48","R12","Молоток, Молотки",30],
+  ["49","L1","Генератор",9],
+  ["49","L2","Генератор",8],
+  ["49","L3","Станок, Круг",32],
+  ["49","L4","Жилет, Брюки",48],
+  ["49","L5","Полуботинки, Ботинки",49],
+  ["49","R1","Сварочные аппараты, Проволока",18],
+  ["49","R2","Сварочные аппараты, Электроды",13],
+  ["49","R3","Сварочные аппараты, Электроды",24],
+  ["49","R4","Маска",26],
+  ["49","R5","Маска",2],
+  ["49","R6","Флюс, Припой, Набор",42],
+  ["49","R7","Насадка, Перчатки, Лампа",14],
+  ["49","R8","Перчатки, Рукавицы",23],
+  ["49","R9","Респиратор, Фильтр, Комбинезон",14],
+  ["49","R10","Очки",28],
+  ["49","R11","Краскопульт",8],
+  ["49","R12","Краскопульт",4],
+  ["49","R13","Термофен, Сварочное",12],
+  ["50","L1","Пылесос",12],
+  ["50","L2","Мешки, Фильтр",67],
+  ["50","L3","Минимойка, Автошампунь, Активная",14],
+  ["50","L4","Минимойка, Смазка, Активная",18],
+  ["50","L5","Смазка, Тиски",64],
+  ["50","R1","Пила, Диск",15],
+  ["50","R2","Станок, Пила",6],
+  ["50","R3","Компрессор, Шланг",14],
+  ["50","R4","Компрессор",6],
+  ["50","R5","Переходник, Переходники",115]
+];
+
 /* ============ КАРТА ПОЛОК ПО МЕТРАМ ============
    L — левая сторона прохода, R — правая. Цифра = номер метра от начала аллеи.
    Формат общий для всех аллей: добавляются по мере обхода зала. */
 
 const SHELF_MAP = {
+ "50":{
+  L:[
+   ["L1","Строительные пылесосы"],
+   ["L2","Мешки, фильтры, насадки к пылесосам, очистители"],
+   ["L3","Мойки высокого давления, автошампунь, активная пена"],
+   ["L4","Мойки, смазки, автохимия"],
+   ["L5","Смазки, тиски, домкраты"]
+  ],
+  R:[
+   ["R1","Торцовочные пилы, диски к ним"],
+   ["R2","Станки, пилы"],
+   ["R3","Компрессоры, шланги"],
+   ["R4","Компрессоры"],
+   ["R5","Переходники, фитинги, пневмопистолеты, тройники"]
+  ]
+ },
  "49":{
   L:[
    ["L1–L2","Генераторы бензиновые и инверторные"],
@@ -10726,17 +10909,15 @@ function resultsHTML(){
         <div class="res-h"><div class="rl">${isNum?"Аллея":"Отдел"}</div><h2>${esc(S.aisle)}</h2>
           <div style="font-family:var(--mono);font-size:12px;color:#B9BEC0;margin-top:6px">
             ${zones.length} направлени${zones.length===1?"е":"й"} · ${Object.values(G[S.aisle]).reduce((n,v)=>n+v.length,0)} категорий</div></div>`;
-      const sm = SHELF_MAP[S.aisle];
-      if(sm) h += `<div class="block"><h3>Карта аллеи по метрам</h3>
-        <div class="map2">
-          <div class="mapcol"><div class="mh">Слева</div>
-            ${sm.L.map(x=>`<div class="mr"><span class="mp">${esc(x[0])}</span><span>${esc(x[1])}</span></div>`).join("")}</div>
-          <div class="mapcol"><div class="mh">Справа</div>
-            ${sm.R.map(x=>`<div class="mr"><span class="mp">${esc(x[0])}</span><span>${esc(x[1])}</span></div>`).join("")}</div>
-        </div>
-        <div class="note" style="margin-top:10px;font-size:12.5px">L — левая сторона прохода, R — правая. Цифра это номер метра от начала аллеи.</div></div>`;
-      if(cont) h += `<div class="block"><h3>Что здесь лежит</h3>
-        <div class="chips">${cont.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div></div>`;
+      const gam = GAMMA.filter(g=>g[0]===S.aisle);
+      if(gam.length){
+        h += `<div class="eyebrow">Что где лежит</div><div class="gam">`
+          + gam.map(g=>`<button class="gamrow" data-req="${esc(g[2].split(",")[0])}">
+              <span class="gp">${g[1][0]==="L"?"слева":"справа"} ${esc(g[1].slice(1))} м</span>
+              <span class="gn">${esc(g[2])}</span>
+              <span class="gc">${g[3]}</span></button>`).join("")
+          + `</div>`;
+      }
       const top = (AISLE_TOP[S.aisle]||[]).filter(id=>FLOWS[id]);
       const used = topUsed(20).filter(id=>aisle(FLOWS[id].zone)===S.aisle);
       const merged = used.concat(top.filter(id=>used.indexOf(id)<0)).slice(0,10);
@@ -10748,11 +10929,15 @@ function resultsHTML(){
         <div class="chips">${REF.slice(0,8).map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>
         <div class="eyebrow" style="margin-top:22px">Все направления</div>`;
       zones.forEach(z=>{
+        const rest = G[S.aisle][z].filter(k=>!shown.has(k));
+        if(!rest.length) return;
         h += `<div class="eyebrow">${esc(z)}</div>
           <div class="shelfrow"><span class="lbl">Где</span>
             <input data-shelf="${esc(z)}" value="${esc(shelf(z))}" placeholder="Например: правая сторона, вторая полка сверху"></div>`
-          + G[S.aisle][z].map(k=>flowCard(k)).join("");
+          + G[S.aisle][z].filter(k=>!shown.has(k)).map(k=>flowCard(k)).join("");
       });
+      h += `<div class="eyebrow">Справочники</div>
+        <div class="chips">${REF.slice(0,8).map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>`;
       return h;
     }
 
@@ -10798,7 +10983,20 @@ function resultsHTML(){
   if(posQ){
     const side = posQ[1]==="L" ? "L" : "R";
     const tag = posQ[1]+posQ[2];
-    Object.keys(SHELF_MAP).filter(al=>!alFilter||al===alFilter).forEach(al=>{
+    const allAisles = Object.keys(SHELF_MAP);
+    artList().forEach(x=>{ if(x.al!=="?" && allAisles.indexOf(x.al)<0) allAisles.push(x.al); });
+    allAisles.filter(al=>!alFilter||al===alFilter).forEach(al=>{
+      if(!SHELF_MAP[al]){                       /* аллея есть в каталоге, но не нарисована */
+        const here = artAtPos(al, tag);
+        if(here.length){
+          h += `<div class="eyebrow">Аллея ${esc(al)} · ${esc(tag)}</div>`;
+          here.slice(0,20).forEach(y=>h+=`<div class="artc${y.top?" top":""}">
+            <div class="artn">${esc(y.n)}</div>
+            <div class="artrow"><span class="artlm">ЛМ ${esc(y.a)}</span>
+            <span class="artad">полка ${esc(y.pol||"—")}</span></div></div>`);
+        }
+        return;
+      }
       SHELF_MAP[al][side].forEach(row=>{
         const norm=row[0].toUpperCase().replace(/\s/g,"");
         if(norm===tag || norm.split(/[–-]/).indexOf(tag)>=0){
@@ -10831,17 +11029,24 @@ function resultsHTML(){
     </div>`);
   }
   const kb = kbSearch(q);
+  const kbMain = kb.slice(0,1), kbMore = kb.slice(1,3);
   if(kb.length){
     h += `<div class="oneline">
       <div class="ol">${esc(shortAnswer(kb[0][1]))}</div>
       <div class="op">${esc(kb[0][2])}</div></div>`;
     h += `<div class="eyebrow">Подробно</div>`;
-    kb.forEach((x,i)=>h+=`<div class="kb">
+    kbMain.forEach((x,i)=>h+=`<div class="kb">
       ${i===0?`<div class="kbshort">${esc(shortAnswer(x[1]))}<span class="kbpl">${esc(x[2])}</span></div>`:""}
       <div class="kbq">${esc(x[0])}</div>
       <div class="kba">${x[1]}</div>
       ${getMyKB().some(m=>m.q===x[0]) ? `<button class="minibtn del" data-delkb="${esc(x[0])}" style="margin-top:8px">Своя запись · удалить</button>` : ""}
       ${i===0?"":`<div class="kbp">${esc(x[2])}</div>`}</div>`);
+  }
+  if(kbMore.length){
+    h += `<div class="eyebrow">Смежное</div>`;
+    kbMore.forEach(x=>h+=`<div class="kb" style="border-left-color:var(--ink-3)">
+      <div class="kbq">${esc(x[0])}</div>
+      <div class="kbp">${esc(x[2])}</div></div>`);
   }
   const sl = slangHit(q);
   if(sl.length){
@@ -10852,7 +11057,7 @@ function resultsHTML(){
   const hit = txt => { const t=txt.toLowerCase(); return words.every(w=>t.includes(w)); };
   const keys = Object.keys(FLOWS).filter(k=>{ const f=FLOWS[k]; return hit(f.title+" "+f.desc+" "+f.tags+" "+f.zone); });
   const refs = REF.filter(r=>hit(r.t+" "+r.tags));
-  const kits = KITS.filter(r=>hit(r.t+" "+r.tags));
+  const kits = [];
   const cases = getCases().filter(c=>hit(c.t+" "+c.r));
   const qas = QUICK.filter(x=>hit(x[0]+" "+x[1])).slice(0,4);
   if(qas.length){ h+=`<div class="eyebrow">Короткий ответ</div>`;
@@ -10881,8 +11086,7 @@ function resultsHTML(){
   keys.forEach(k=>h+=flowCard(k));
   if(refs.length){ h+=`<div class="eyebrow">Шпаргалки</div>`;
     refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
-  if(kits.length){ h+=`<div class="eyebrow">Наборы</div>`;
-    kits.forEach(r=>h+=`<button class="card ref" data-kit="${KITS.indexOf(r)}"><div class="ct">${esc(r.t)}</div><div class="cd">${esc(r.hint)}</div></button>`); }
+
   h += `<div style="margin-top:14px"><a class="card ref" style="text-decoration:none" href="${siteSearch(S.q)}" target="_blank" rel="noopener">
     <div class="ct">Найти на сайте Лемана ПРО</div>
     <div class="cd">Открыть поиск «${esc(S.q)}» на saransk.lemanapro.ru</div></a></div>`;
@@ -10891,9 +11095,10 @@ function resultsHTML(){
 
 function viewList(){
   return `<div class="search">
-    <input id="q" type="search" placeholder="Материал или метр полки: клинкер, нержавейка, L9…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
+    <input id="q" type="search" placeholder="Что ищем? Коронка 68, наждачка, кабель, L9…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
     <button class="hbtn" id="micBtn" style="background:var(--ink);color:var(--tape);border-color:var(--ink);font-size:18px;padding:0 14px" title="Сказать голосом">🎤</button>
   </div>
+  <div class="saved" id="micMsg" style="min-height:16px;padding-left:2px"></div>
   <div id="sugbox"></div>
   <div id="results">${resultsHTML()}</div>`;
 }
@@ -10993,8 +11198,6 @@ function viewResult(){
     `<ul class="tight">${nextFor(S.flow).map(x=>`<li><b>${esc(x[0])}</b> — ${esc(x[1])}</li>`).join("")}</ul>
      <div class="note" style="margin-top:10px;font-size:13px">Не продавайте это сегодня. Назовите вслух — и человек вернётся именно к вам.</div>`);
 
-  h += block("","Если нужного нет в наличии",
-    `<ul class="tight">${zamenaFor(S.flow).map(x=>`<li>${x}</li>`).join("")}</ul>`);
 
   h += block("pick","Полезные советы — сказать клиенту",
     `<ul class="tight">${tipsFor(S.flow).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`);
@@ -11029,12 +11232,7 @@ function viewResult(){
     <div class="note" style="margin-top:10px;font-size:12.5px">Привязка к результату: <b>${esc(r.head)}</b></div>
   </div>`;
 
-  h += `<div class="prosc"><span class="rl">Речь целиком — можно говорить дословно</span>
-    ${proScript(S.flow, f, r).map((s,i)=>`<div class="pl">
-        <div class="pn2"><span class="num">${i+1}</span>${esc(s[0])}</div>
-        <div class="pt">${esc(s[1])}</div></div>`).join("")}
-    <div class="pfoot">Короткая версия: ${esc(stripTags(r.script))}</div>
-  </div>
+  h += `<div class="script" style="margin-top:10px"><span class="rl">Можно сказать так</span>${r.script}</div>
   <a class="card ref" style="text-decoration:none;margin-top:10px" href="${siteSmart(f, r)}" target="_blank" rel="noopener">
     <div class="ct">Открыть на сайте с этими параметрами</div>
     <div class="cd">Поиск уже подставлен: ${esc(r.head)}. Наличие и цены — в Саранске</div></a>
@@ -11689,7 +11887,6 @@ function render(){
   }
   else if(S.tab==="quick") h=viewQuick();
   else if(S.tab==="calc") h=viewCalc();
-  else if(S.tab==="kits") h=viewKits();
   else h=viewList();
 
   if(S.client && S.flow) h += viewClient();
@@ -11772,19 +11969,41 @@ function wire(){
 
   const mic=document.getElementById("micBtn");
     if(mic){
+      const say=(t,ms)=>{ const s=document.getElementById("micMsg");
+        if(s){ s.textContent=t; clearTimeout(s._t); s._t=setTimeout(()=>s.textContent="", ms||2600); } };
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if(SR){
-        mic.onclick=()=>{
-          const r=new SR(); r.lang="ru-RU"; r.interimResults=false; r.maxAlternatives=1;
-          mic.textContent="●";
-          r.onresult=e=>{ const t=e.results[0][0].transcript; pushRecent(t); go({q:t, aisle:null}); };
-          r.onerror=()=>{ mic.textContent="🎤"; q.focus(); };
-          r.onend=()=>{ mic.textContent="🎤"; };
-          try{ r.start(); }catch(err){ mic.textContent="🎤"; q.focus(); }
+      mic.onclick=()=>{
+        if(!SR){ say("Голосовой ввод не поддерживается — нажмите микрофон на клавиатуре"); q.focus(); return; }
+        if(!navigator.onLine){ say("Распознавание речи требует интернета"); q.focus(); return; }
+        let rec;
+        try{ rec=new SR(); }catch(err){ say("Не удалось запустить микрофон"); q.focus(); return; }
+        rec.lang="ru-RU"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=1;
+        let got="";
+        mic.classList.add("rec"); mic.textContent="●"; say("Говорите…", 8000);
+        rec.onresult=e=>{
+          let txt="";
+          for(let i=e.resultIndex;i<e.results.length;i++) txt+=e.results[i][0].transcript;
+          txt=txt.trim();
+          if(txt){ got=txt; q.value=txt; say("Слышу: "+txt, 8000); }
+          if(e.results[e.results.length-1].isFinal && got){
+            pushRecent(got); rec.stop(); go({q:got, aisle:null});
+          }
         };
-      } else {
-        mic.onclick=()=>{ q.focus(); };
-      }
+        rec.onerror=ev=>{
+          mic.classList.remove("rec"); mic.textContent="🎤";
+          const m={ "not-allowed":"Нет доступа к микрофону: разрешите его в настройках сайта",
+                    "service-not-allowed":"Микрофон запрещён в настройках браузера",
+                    "no-speech":"Не расслышал — попробуйте ещё раз",
+                    "audio-capture":"Микрофон не найден",
+                    "network":"Нет связи с сервисом распознавания" };
+          say(m[ev.error] || ("Ошибка микрофона: "+ev.error));
+        };
+        rec.onend=()=>{
+          mic.classList.remove("rec"); mic.textContent="🎤";
+          if(got){ pushRecent(got); go({q:got, aisle:null}); }
+        };
+        try{ rec.start(); }catch(err){ mic.classList.remove("rec"); mic.textContent="🎤"; say("Микрофон уже слушает"); }
+      };
     }
   }
 
