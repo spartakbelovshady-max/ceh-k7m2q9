@@ -9435,7 +9435,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "33";
+const APP_VERSION = "34";
 const APP_DATE = "04.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -10903,13 +10903,15 @@ function resultsHTML(){
     /* ---- уровень 2: выбрана аллея ---- */
     if(S.aisle && G[S.aisle]){
       const zones = Object.keys(G[S.aisle]).sort((a,b)=>a.localeCompare(b,"ru"));
-      const cont = AISLE_CONTENT[S.aisle];
       const isNum = /^\d+$/.test(S.aisle);
+      const gam = GAMMA.filter(g=>g[0]===S.aisle);
+      const total = Object.values(G[S.aisle]).reduce((n,v)=>n+v.length,0);
+
       h += `<button class="back" id="aisleBack">← Все аллеи</button>
         <div class="res-h"><div class="rl">${isNum?"Аллея":"Отдел"}</div><h2>${esc(S.aisle)}</h2>
           <div style="font-family:var(--mono);font-size:12px;color:#B9BEC0;margin-top:6px">
-            ${zones.length} направлени${zones.length===1?"е":"й"} · ${Object.values(G[S.aisle]).reduce((n,v)=>n+v.length,0)} категорий</div></div>`;
-      const gam = GAMMA.filter(g=>g[0]===S.aisle);
+            ${gam.length?gam.length+" мест · ":""}${total} категорий подбора</div></div>`;
+
       if(gam.length){
         h += `<div class="eyebrow">Что где лежит</div><div class="gam">`
           + gam.map(g=>`<button class="gamrow" data-req="${esc(g[2].split(",")[0])}">
@@ -10918,24 +10920,23 @@ function resultsHTML(){
               <span class="gc">${g[3]}</span></button>`).join("")
           + `</div>`;
       }
+
       const top = (AISLE_TOP[S.aisle]||[]).filter(id=>FLOWS[id]);
       const used = topUsed(20).filter(id=>aisle(FLOWS[id].zone)===S.aisle);
-      const merged = used.concat(top.filter(id=>used.indexOf(id)<0)).slice(0,10);
+      const merged = used.concat(top.filter(id=>used.indexOf(id)<0)).slice(0,8);
+      const shown = new Set(merged);
       if(merged.length>=3){
-        h += `<div class="eyebrow">Топ запросов в этой аллее</div>` + merged.map(k=>flowCard(k)).join("");
-      }
+        h += `<div class="eyebrow">Частые запросы</div>` + merged.map(k=>flowCard(k)).join("");
+      } else { shown.clear(); }
 
-      h += `<div class="eyebrow" style="margin-top:22px">Справочники</div>
-        <div class="chips">${REF.slice(0,8).map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>
-        <div class="eyebrow" style="margin-top:22px">Все направления</div>`;
+      let restHTML = "";
       zones.forEach(z=>{
         const rest = G[S.aisle][z].filter(k=>!shown.has(k));
         if(!rest.length) return;
-        h += `<div class="eyebrow">${esc(z)}</div>
-          <div class="shelfrow"><span class="lbl">Где</span>
-            <input data-shelf="${esc(z)}" value="${esc(shelf(z))}" placeholder="Например: правая сторона, вторая полка сверху"></div>`
-          + G[S.aisle][z].filter(k=>!shown.has(k)).map(k=>flowCard(k)).join("");
+        restHTML += rest.map(k=>flowCard(k)).join("");
       });
+      if(restHTML) h += `<div class="eyebrow">${merged.length>=3?"Остальной подбор":"Подбор по товару"}</div>` + restHTML;
+
       h += `<div class="eyebrow">Справочники</div>
         <div class="chips">${REF.slice(0,8).map(x=>`<span class="chip pickable" data-ref="${x.id}" style="cursor:pointer">${esc(x.t)}</span>`).join("")}</div>`;
       return h;
