@@ -387,6 +387,12 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .o2 .o2n{font-weight:700;font-size:15.5px;line-height:1.25}
 .o2 .o2w{font-size:14px;line-height:1.5;color:var(--ink-2);margin:7px 0 9px}
 .o2 .o2w b{background:var(--tape);color:var(--ink);padding:1px 4px;border-radius:2px}
+
+.artc .artwhy{font-size:13.5px;line-height:1.5;color:var(--ink-2);margin-top:8px;
+  border-top:1px dashed var(--line);padding-top:8px}
+.artc .artwhy b{background:var(--tape);color:var(--ink);padding:1px 4px;border-radius:2px;font-family:var(--mono);font-size:12.5px}
+.artc .o2t{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tape-dark);margin-bottom:5px}
 .hide{display:none}
 .foot{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-align:center;padding:26px 0 10px;line-height:1.6}
 @media(prefers-reduced-motion:no-preference){
@@ -9478,8 +9484,53 @@ const WHYDB = [
 
 ];
 
+/* ---- смазки и химия: объяснения ---- */
+const WHYDB_SMAZKI = [
+["Почему WD-40 — не смазка",
+ "WD означает Water Displacement — вытеснение воды. Это лёгкий растворитель с минимальной масляной фракцией. Его задача: <b>проникнуть в резьбу, размягчить окислы, вытеснить влагу</b>.<br><br>Отсюда следствие: он очень текучий и почти полностью испаряется за несколько дней. Как смазка он не работает вообще — через неделю петля снова скрипит, а узел остаётся сухим, причём чище, чем был, потому что WD смыл остатки старой смазки.<br><br>Правильная последовательность: WD отмочил и сорвал — затем узел <b>смазывается по-настоящему</b>. Литиевой, если не греется. Медной, если греется. Силиконовой, если рядом резина.<br><br>Это самое частое заблуждение в группе смазок, и на нём люди убивают петли, замки и тросы.",
+ "wd wd-40 вэдэшка смазка почему не работает испаряется отмочить проникающая вытеснитель"],
+
+["Почему на резину только силикон",
+ "Резина и многие пластики — это полимеры, и они чувствительны к типу растворителя.<br><br>Минеральные масла и литиевые смазки (литол, солидол) вызывают <b>набухание</b> резины: молекулы масла проникают между полимерными цепями, уплотнитель разбухает, теряет упругость и потом рвётся при закрывании двери. Процесс идёт месяцами, поэтому связь с причиной обычно не замечают.<br><br>Силикон химически инертен к резине и пластику, не набухает их и держит широкий диапазон температур — примерно от −50 до +200 °C. Поэтому уплотнители дверей, оконная фурнитура, направляющие пластиковых ящиков — только силикон.<br><br>Практический бонус: на морозе силиконовая плёнка не даёт резинке примёрзнуть к металлу, и уплотнитель не отрывается вместе с куском при открывании.",
+ "силикон резина уплотнитель пластик почему литол набухает нельзя мороз примерзает двери"],
+
+["Почему в замок нельзя густую смазку",
+ "Личинка замка — это набор пинов и пружин с зазорами в десятые доли миллиметра. Она работает в открытом узле: внутрь постоянно попадает пыль с ключа и из воздуха.<br><br>Густая смазка (литол, солидол, любое масло) выступает как <b>связующее для пыли</b>. Образуется абразивная паста, которая забивает зазоры и стирает пины. Замок сначала начинает закусывать, потом клинит окончательно — и ремонту уже не подлежит.<br><br>Работают два варианта. <b>Графитовый порошок</b>: твёрдые чешуйки графита скользят друг по другу и не липнут, пыль к ним не пристаёт. <b>Сухой тефлон (PTFE)</b> в аэрозоле: испаряется носитель, остаётся тонкая несмачиваемая плёнка.<br><br>То же правило касается тросов в оболочке и любых пыльных узлов с малыми зазорами.",
+ "замок личинка графит тефлон почему нельзя густая смазка литол клинит пыль ключ"],
+
+["Почему для нагруженных узлов нужен молибден",
+ "Дисульфид молибдена (MoS₂) имеет слоистую кристаллическую структуру: слои держатся слабыми связями и легко скользят друг по другу. Под давлением он <b>вплавляется в микрорельеф металла</b> и образует плёнку, которая работает даже там, где обычную смазку уже выдавило.<br><br>Отсюда его область: высокие удельные нагрузки при малых скоростях. Шлицевые соединения, ШРУСы, направляющие суппортов, резьба под большим моментом, опоры с точечным контактом.<br><br>Обратная сторона: MoS₂ плохо подходит для подшипников качения на высоких оборотах. Там нужна текучая смазка, которая циркулирует и отводит тепло, а молибденовая паста густая и сопротивляется вращению.<br><br>Ориентир простой: много силы и мало движения — молибден. Много движения — литиевая.",
+ "молибден mos2 дисульфид шлицы шрус нагрузка почему паста направляющие суппорт"],
+
+["Почему медная смазка нужна там, где греется",
+ "Обычная смазка на органической основе при 200–300 °C разлагается и выгорает, оставляя сухой нагар. После этого резьба или направляющая работает насухую и прикипает — через год такой болт можно только срезать.<br><br>В медной смазке носитель тоже выгорает, но остаётся <b>слой мелкодисперсной меди и графита</b>, который выдерживает 800–1100 °C. Он не смазывает в обычном смысле, а работает как разделительный слой: не даёт двум стальным поверхностям схватиться при нагреве.<br><br>Отсюда её применение: резьба выпускного коллектора, свечи, шпильки, направляющие тормозных суппортов, гайки на ступице.<br><br>Важное ограничение: медную смазку не наносят на рабочие поверхности трения тормозов и не используют как обычную смазку подшипников — её задача именно защита резьбы от прикипания.",
+ "медная смазка высокотемпературная тормоза выпуск резьба почему прикипает 1000 градусов шпильки"],
+
+["Чем литиевая смазка отличается от солидола",
+ "Обе — пластичные смазки, то есть масло, удержанное в каркасе из мыла. Разница в металле этого мыла.<br><br><b>Кальциевые</b> (солидол) — дешёвые и водостойкие, но рабочий предел около +70 °C: выше каркас разрушается и смазка отделяется от масла.<br><br><b>Литиевые</b> (Литол-24, Циатим, EP-2) держат примерно до +120–130 °C и лучше сопротивляются вымыванию водой. Это и сделало их универсальным стандартом: подшипники, петли, тросы, открытые узлы.<br><br>Практический вывод: солидол ещё встречается, но брать его есть смысл только по цене и только там, где точно не греется. Во всём остальном литиевая перекрывает его по всем параметрам.<br><br>И общее ограничение для обеих: обе разъедают резину и не годятся в пыльные узлы с малыми зазорами.",
+ "литол литиевая солидол циатим разница почему температура 120 подшипник вымывается"]
+];
+WHYDB.push.apply(WHYDB, WHYDB_SMAZKI);
+
+/* Чем засеивать режим «Почему» для каждой категории */
+const DEEP_SEED = {
+ smazki:"смазка", perf:"джоули", ushm:"обороты круга", diski:"сегменты связка",
+ shurup:"вольты ньютон", compressor:"ресивер безмасляный", moyka:"бары литры",
+ generator:"пусковой ток", svarka:"пв ток электрод", payka:"флюс припой",
+ krepez:"пыль отверстие дюбель", plitka:"гребёнка плитка", shpateli:"зуб гребёнки",
+ shlif:"зерно сетка", pylesos:"класс пылесоса", cirkulyarka:"отдача зубья",
+ lobzik:"обратный зуб", golovki:"граней головка", klyuchi:"граней ключ",
+ udarny:"стамеска молоток рукоять", tiski:"силумин чугун", struby:"струбцина",
+ stameski:"стамеска", laser:"зелёный лазер калибровка", izmerenie:"калибровка",
+ fitting:"дюйм резьба сечение", polivfit:"дюйм резьба", gorelki:"медь труба горелка",
+ kraskopult:"сопло вязкость", torcovka:"зубья", montaz:"круг обороты",
+ stanki:"рейсмус фуганок", zatochka:"заточка угол", siz:"класс респиратора", pravilo:"", pily:"", stanki:"", zatochka:"", fen:"",
+ otvertki:"", nabory:"", gubcy:"", lebedka:"", kraskopult:"сопло вязкость",
+ skobyanka:"", sovmest:"", neyasno:"", stepler:"", napilniki:"", dielektrik:"", zaklepki:""
+};
+
 /* Поиск по объяснениям — тот же терпимый алгоритм */
-function whySearch(q){
+function whySearch(q, loose){
   const content = contentWords(q);
   const raw = expandQuery(q).filter(w=>w.length>2 && !STOP.has(w));
   if(!raw.length) return [];
@@ -9490,7 +9541,10 @@ function whySearch(q){
     const title=item[0].toLowerCase().replace(/ё/g,"е");
     const tags =item[2].toLowerCase().replace(/ё/g,"е");
     const key  = title+" "+tags;
-    if(need.length && !need.every(w=>hasWord(key,w))) return;
+    if(need.length){
+      const hits = need.filter(w=>hasWord(key,w)).length;
+      if(loose ? hits===0 : hits!==need.length) return;
+    }
     let s=0;
     stems.forEach(st=>{ if(hasWord(title,st)) s+=4; else if(hasWord(tags,st)) s+=3; });
     if(s>=3) res.push([item,s]);
@@ -9588,6 +9642,25 @@ function twoOptions(flowId, list){
   if(tops.length && rest.length) return {a:tops[0], b:rest[0], unit:null};
   if(list.length>=2) return {a:list[0], b:list[1], unit:null};
   return null;
+}
+
+/* Почему именно этот артикул — по его собственной цифре */
+function itemWhy(flowId, x, pool){
+  const k = KEY_SPEC[flowId];
+  const v = k ? specVal(x.n, flowId) : null;
+  if(v===null){
+    return x.top
+      ? "Ходовая позиция, держим в наличии постоянно. Берите, когда задача обычная и особых требований нет."
+      : "Альтернатива: берите, если первой нет на месте или клиенту нужно другое исполнение.";
+  }
+  const vals = (pool||[]).map(y=>specVal(y.n, flowId)).filter(z=>z!==null).sort((a,b)=>a-b);
+  const min = vals.length?vals[0]:v, max = vals.length?vals[vals.length-1]:v;
+  const pos = (max===min) ? 0.5 : (v-min)/(max-min);
+  let line;
+  if(pos <= 0.34)      line = `<b>${v} ${k.u}</b> — нижняя часть линейки. Хватит, если задача такая: ${k.low}. Дешевле и легче.`;
+  else if(pos >= 0.67) line = `<b>${v} ${k.u}</b> — верх линейки. Это под ${k.high}. Дороже и тяжелее, но на такой работе разница видна сразу.`;
+  else                 line = `<b>${v} ${k.u}</b> — середина линейки. Закроет и мелкое, и серьёзное, если задача смешанная или заранее непонятна.`;
+  return line + (x.top ? " Держим в наличии постоянно." : "");
 }
 
 /* Почему именно этот — текстом */
@@ -9815,7 +9888,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "40";
+const APP_VERSION = "43";
 const APP_DATE = "04.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -11365,7 +11438,7 @@ function resultsHTML(){
     const side = posQ[1]==="L" ? "L" : "R";
     const tag = posQ[1]+posQ[2];
     const allAisles = Object.keys(SHELF_MAP);
-    artList().forEach(x=>{ if(x.al!=="?" && allAisles.indexOf(x.al)<0) allAisles.push(x.al); });
+    artList().forEach(x=>{ if(/^\d{2}$/.test(x.al) && +x.al>=40 && allAisles.indexOf(x.al)<0) allAisles.push(x.al); });
     allAisles.filter(al=>!alFilter||al===alFilter).forEach(al=>{
       if(!SHELF_MAP[al]){                       /* аллея есть в каталоге, но не нарисована */
         const here = artAtPos(al, tag);
@@ -11511,16 +11584,81 @@ function viewResult(){
   const r=f.out(S.ans);
   const chosen = f.qs.map((q,i)=>{ const o=q.opts.find(o=>o[1]===S.ans[i]); return o?o[0]:"—"; });
   const block = (cls,title,inner) => `<div class="block ${cls}"><h3>${title}</h3>${inner}</div>`;
+
+  /* ---- товары из каталога считаем сразу, они идут первыми ---- */
+  const myCodes = codesFor(S.flow, r.head);
+  const catQ = CAT_Q[S.flow] || [f.site, f.title].filter(Boolean);
+  let fromCat = [];
+  catQ.forEach(qq=>{ artSearch(qq, 10).forEach(x=>{ if(!fromCat.some(y=>y.a===x.a)) fromCat.push(x); }); });
+  fromCat = fromCat.sort((a,b)=>(b.top?1:0)-(a.top?1:0)).slice(0,6);
+
+  const mainCfg = CAT_MAIN[S.flow];
+  let pool = [];
+  if(mainCfg) pool = artSearch(mainCfg.q, 60).filter(x=>!mainCfg.not || !mainCfg.not.test(x.n));
+  if(pool.length<2) pool = fromCat;
+  const pair = mainCfg ? twoOptions(S.flow, pool) : null;
+  const poolWhy = pool.length>=2 ? pool : fromCat;
+
+  /* если пара собралась — добираем из того же пула, а не из общей выдачи */
+  const extraSrc = pair ? pool : fromCat;
+  const showList = (pair ? [pair.a, pair.b] : [])
+    .concat(extraSrc.filter(x=>!pair || (x.a!==pair.a.a && x.a!==pair.b.a)))
+    .filter((x,i,a)=>a.findIndex(y=>y.n.toLowerCase()===x.n.toLowerCase())===i)
+    .slice(0,4);
+
   let h = `<button class="back" id="back">← Изменить ответы</button>
   <div class="view">
   <div class="res-h">
-    <div class="rl">Рекомендация · ${esc(aisleTag(f.zone))}${shelf(f.zone)?" · "+esc(shelf(f.zone)):""}</div>
-    <h2>${esc(r.head)}</h2>
-    <div style="font-family:var(--mono);font-size:12px;color:#B9BEC0;margin-top:6px">${esc(r.sub)}</div>
-    ${posLine(S.flow)?`<div class="posline">${esc(posLine(S.flow))}</div>`:""}
+    <div class="rl">${esc(r.head)}</div>
+    <h2>${esc(r.sub)}</h2>
     <div class="answers">${chosen.map(c=>`<span class="a">${esc(c)}</span>`).join("")}</div>
-  </div>
-  <div class="btnrow" style="margin-top:8px">
+  </div>`;
+
+  /* ---------- 1. ТОВАРЫ В ЗАЛЕ ---------- */
+  h += `<div class="block pick"><h3>Что взять — товары в зале</h3>
+    ${showList.length ? showList.map((x,i)=>`<div class="artc${x.top?" top":""}">
+        ${pair && i<2 ? `<div class="o2t">${i===0?"Попроще":"С запасом"}</div>` : ""}
+        <div class="artn">${esc(x.n)}</div>
+        <div class="artrow">
+          <span class="artlm">ЛМ ${esc(x.a)}</span>
+          <span class="artad">${esc(artAddr(x))}</span>
+        </div>
+        <div class="artwhy">${itemWhy(S.flow, x, poolWhy)}</div>
+      </div>`).join("")
+    : `<div class="note">${(CAT_Q[S.flow]&&!CAT_Q[S.flow].length)
+        ? "Этот товар в другом отделе — в нашем каталоге его нет. Проводите клиента и подскажите, что спросить."
+        : "Каталог ничего не подобрал по этой категории. Уточните названием в поиске."}</div>`}
+
+    ${myCodes.length ? `<div class="eyebrow">Мои пометки</div>` + myCodes.map(c=>`<div class="artc">
+        <div class="artn">${esc(c.n)}${c.p?" · "+esc(c.p):""}</div>
+        <div class="artrow"><span class="artlm">ЛМ ${esc(c.c)}</span>
+          ${c.note?`<span class="artad">${esc(c.note)}</span>`:""}</div>
+        <button class="minibtn del" data-delcode="${esc(c.id)}" style="margin-top:8px">Убрать</button>
+      </div>`).join("") : ""}
+
+    ${S.addCode ? `<div class="caseform" style="margin-top:12px">
+        <input id="cdName" placeholder="Название модели, как на ценнике" autocomplete="off">
+        <input id="cdCode" placeholder="ЛМ-код с ценника" inputmode="numeric" autocomplete="off">
+        <input id="cdNote" placeholder="Заметка: полка, что сказать" autocomplete="off">
+        <div class="btnrow" style="margin-top:4px">
+          <button class="btn primary" id="cdSave">Сохранить</button>
+          <button class="btn" id="cdCancel">Отмена</button>
+        </div>
+        <div class="saved" id="cdMsg"></div>
+      </div>`
+    : `<div class="btnrow" style="margin-top:10px">
+        <button class="btn dark" id="cdAdd">Добавить свою пометку</button>
+      </div>`}
+  </div>`;
+
+  /* ---------- 2. ТРИ ОБЯЗАТЕЛЬНЫХ ---------- */
+  const m3 = must3For(S.flow, r);
+  h += `<div class="must"><h3>Три обязательных — назвать вслух</h3>
+    ${m3.map(x=>`<div class="m ${inKit(x[0])?"on":""}" data-add="${esc(x[0])}">
+      <div class="mn">${esc(x[0])}</div><div class="mw">${x[1]}</div></div>`).join("")}</div>`;
+
+  /* ---------- 3. КНОПКИ ---------- */
+  h += `<div class="btnrow" style="margin-top:10px">
     <button class="btn primary" id="clientBtn">Показать клиенту</button>
     <button class="btn dark" id="deepBtn">Почему именно так</button>
   </div>
@@ -11530,26 +11668,20 @@ function viewResult(){
   </div>
   <div class="saved" id="careMsg"></div>`;
 
-  h += `<div style="display:flex;gap:8px;margin-top:8px">
-    <button class="shortbtn ${S.short?"on":""}" id="shortBtn">${S.short?"Коротко · включено":"Коротко — для часа пик"}</button>
-  </div>`;
-
-  const m3 = must3For(S.flow, r);
-  h += `<div class="must"><h3>Три обязательных — назвать вслух</h3>
-    ${m3.map(x=>`<div class="m ${inKit(x[0])?"on":""}" data-add="${esc(x[0])}">
-      <div class="mn">${esc(x[0])}</div><div class="mw">${x[1]}</div></div>`).join("")}</div>`;
-
   if(S.short){
-    h += block("pick","Главный аргумент",
-      `<div class="pickrow"><div class="pn">${r.picks[0][0]}</div><div class="pw">${r.picks[0][1]}</div></div>`);
     h += `<div class="script" style="margin-top:8px"><span class="rl">Можно сказать так</span>${r.script}</div>
       <div class="btnrow">
-        <button class="btn primary" id="clientBtn2">Показать клиенту</button>
+        <button class="btn" id="shortBtn">Показать подробно</button>
         <button class="btn dark" id="tolist">Другой запрос</button>
       </div></div>`;
     return h;
   }
 
+  h += `<div style="display:flex;gap:8px;margin-top:10px">
+    <button class="shortbtn" id="shortBtn">Коротко — для часа пик</button>
+  </div>`;
+
+  /* ---------- 4. ОБОСНОВАНИЕ ---------- */
   h += block("pick","Что предложить и почему",
     r.picks.map(p=>`<div class="pickrow"><div class="pn">${p[0]}</div><div class="pw">${p[1]}</div></div>`).join(""));
 
@@ -11575,80 +11707,8 @@ function viewResult(){
   h += block("","Что чаще всего забывают взять",
     `<ul class="tight">${missFor(f.zone).map(x=>`<li class="pickable ${inKit(x)?"on":""}" data-add="${esc(x)}">${esc(x)}</li>`).join("")}</ul>`);
 
-
   h += block("pick","Полезные советы — сказать клиенту",
     `<ul class="tight">${tipsFor(S.flow).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`);
-
-  const myCodes = codesFor(S.flow, r.head);
-  /* реальные позиции из каталога магазина по этой категории */
-  const catQ = CAT_Q[S.flow] || [f.site, f.title].filter(Boolean);
-  let fromCat = [];
-  catQ.forEach(qq=>{ artSearch(qq, 10).forEach(x=>{ if(!fromCat.some(y=>y.a===x.a)) fromCat.push(x); }); });
-  fromCat = fromCat.sort((a,b)=>(b.top?1:0)-(a.top?1:0)).slice(0,6);
-
-  /* пул для выбора пары: только сам инструмент */
-  const mainCfg = CAT_MAIN[S.flow];
-  let pool = [];
-  if(mainCfg){
-    pool = artSearch(mainCfg.q, 40).filter(x=>!mainCfg.not || !mainCfg.not.test(x.n));
-  }
-  if(pool.length<2) pool = fromCat;
-  const pair = mainCfg ? twoOptions(S.flow, pool) : null;
-  if(pair){
-    h += `<div class="block pick"><h3>Два варианта на выбор</h3>
-      <div class="opt2">
-        <div class="o2"><div class="o2t">Вариант 1 · попроще</div>
-          <div class="o2n">${esc(pair.a.n)}</div>
-          <div class="o2w">${optionWhy(pair,"a")}</div>
-          <div class="artrow"><span class="artlm">ЛМ ${esc(pair.a.a)}</span>
-            <span class="artad">${esc(artAddr(pair.a))}</span></div></div>
-        <div class="o2"><div class="o2t">Вариант 2 · с запасом</div>
-          <div class="o2n">${esc(pair.b.n)}</div>
-          <div class="o2w">${optionWhy(pair,"b")}</div>
-          <div class="artrow"><span class="artlm">ЛМ ${esc(pair.b.a)}</span>
-            <span class="artad">${esc(artAddr(pair.b))}</span></div></div>
-      </div>
-      <div class="note" style="margin-top:10px;font-size:13px">Называйте оба и разницу между ними. Выбор из двух человек делает сам и уходит уверенным — в отличие от одного навязанного варианта.</div>
-    </div>`;
-  }
-
-  h += `<div class="block pick"><h3>Товары в зале по этой категории</h3>
-    ${fromCat.length ? fromCat.map(x=>`<div class="artc${x.top?" top":""}">
-        <div class="artn">${esc(x.n)}</div>
-        <div class="artrow"><span class="artlm">ЛМ ${esc(x.a)}</span>
-          <span class="artad">${esc(artAddr(x))}</span></div>
-        ${x.top?'<div class="arttop">ТОП — держим в наличии</div>':""}
-      </div>`).join("")
-    : `<div class="note">${(CAT_Q[S.flow]&&!CAT_Q[S.flow].length)
-        ? "Этот товар в другом отделе — в нашем каталоге его нет. Проводите клиента и подскажите, что спросить."
-        : "Каталог ничего не подобрал по этой категории. Уточните названием в поиске."}</div>`}
-
-    ${myCodes.length ? `<div class="eyebrow">Мои пометки</div>` + myCodes.map(c=>`<div class="artc">
-        <div class="artn">${esc(c.n)}${c.p?" · "+esc(c.p):""}</div>
-        <div class="artrow"><span class="artlm">ЛМ ${esc(c.c)}</span>
-          ${c.note?`<span class="artad">${esc(c.note)}</span>`:""}</div>
-        <button class="minibtn del" data-delcode="${esc(c.id)}" style="margin-top:8px">Убрать</button>
-      </div>`).join("") : ""}
-
-    ${S.addCode ? `<div class="caseform" style="margin-top:12px">
-        <input id="cdName" placeholder="Название модели, как на ценнике" autocomplete="off">
-        <input id="cdCode" placeholder="ЛМ-код (цифры с ценника)" inputmode="numeric" autocomplete="off">
-        <input id="cdPrice" placeholder="Цена, необязательно" autocomplete="off">
-        <input id="cdNote" placeholder="Заметка: полка, что сказать" autocomplete="off">
-        <label style="display:flex;gap:9px;align-items:center;padding:9px 0;font-size:14.5px">
-          <input type="checkbox" id="cdAll" style="width:22px;height:22px;accent-color:var(--tape)">
-          Показывать во всей категории
-        </label>
-        <div class="btnrow" style="margin-top:4px">
-          <button class="btn primary" id="cdSave">Сохранить</button>
-          <button class="btn" id="cdCancel">Отмена</button>
-        </div>
-        <div class="saved" id="cdMsg"></div>
-      </div>`
-    : `<div class="btnrow" style="margin-top:10px">
-        <button class="btn dark" id="cdAdd">Добавить свою пометку</button>
-      </div>`}
-  </div>`;
 
   h += `<div class="script" style="margin-top:10px"><span class="rl">Можно сказать так</span>${r.script}</div>
   <a class="card ref" style="text-decoration:none;margin-top:10px" href="${siteSmart(f, r)}" target="_blank" rel="noopener">
@@ -11732,10 +11792,16 @@ function viewObj(){
 /* ---------- глубокое пояснение ---------- */
 function viewDeep(){
   const q=(S.deepQ||"").trim();
-  const found = q ? whySearch(q) : [];
-  const seedTags = S.flow && FLOWS[S.flow] ? FLOWS[S.flow].title : "";
-  const seed = !q && S.flow ? whySearch(seedTags) : [];
-  const list = q ? found : (seed.length ? seed : WHYDB.slice(0,6));
+  let list, ctx=false;
+  if(q){
+    list = whySearch(q);
+  } else if(S.flow){
+    const seed = DEEP_SEED[S.flow] || (FLOWS[S.flow] ? FLOWS[S.flow].title : "");
+    list = seed ? whySearch(seed, true) : [];
+    ctx = true;
+  } else {
+    list = WHYDB.slice(0,6);
+  }
 
   return `<div class="sheet">
     <div class="sh-top"><div class="t">Почему именно так</div><button data-close="deep">Закрыть</button></div>
@@ -11746,14 +11812,16 @@ function viewDeep(){
       </div>
       <div class="note">Разбор по существу: физика, цифры, следствия. Введите товар или параметр — получите объяснение, которое можно пересказать клиенту.</div>
       <div style="height:12px"></div>
-      <div id="deepRes">${deepListHTML(list, q)}</div>
+      <div id="deepRes">${deepListHTML(list, q, ctx)}</div>
       <div class="btnrow"><button class="btn dark" data-close="deep">Назад</button></div>
     </div></div>`;
 }
 
-function deepListHTML(list, q){
-  if(!list.length) return `<div class="note">По этому слову объяснения пока нет. Попробуйте иначе: «зуб гребёнки», «джоули», «пусковой ток», «класс пылесоса», «связка диска», «ПВ сварки».</div>`;
-  return (q ? "" : `<div class="eyebrow">${S.flow?"По этой категории":"Частые вопросы"}</div>`)
+function deepListHTML(list, q, ctx){
+  if(!list.length) return `<div class="note">${ctx
+    ? "По этой категории готового разбора пока нет. Введите конкретное слово — например «смазка», «джоули», «связка», «пусковой ток», «сопло»."
+    : "По этому слову объяснения нет. Попробуйте иначе: «зуб гребёнки», «джоули», «пусковой ток», «класс пылесоса», «связка диска», «ПВ сварки»."}</div>`;
+  return (q ? "" : `<div class="eyebrow">${ctx?"По этой категории":"Частые вопросы"}</div>`)
    + list.map(x=>`<div class="whyc">
       <div class="whyq">${esc(x[0])}</div>
       <div class="whya">${x[1]}</div>
@@ -12279,7 +12347,12 @@ function wire(){
   if(di){
     const upd=()=>{ S.deepQ=di.value;
       const box=document.getElementById("deepRes");
-      if(box) box.innerHTML = deepListHTML(S.deepQ.trim()?whySearch(S.deepQ):(S.flow?whySearch(FLOWS[S.flow].title):WHYDB.slice(0,6)), S.deepQ.trim()); };
+      if(!box) return;
+      const qq=S.deepQ.trim();
+      if(qq){ box.innerHTML = deepListHTML(whySearch(qq), qq, false); }
+      else if(S.flow){ const sd=DEEP_SEED[S.flow]||FLOWS[S.flow].title;
+        box.innerHTML = deepListHTML(sd?whySearch(sd,true):[], "", true); }
+      else box.innerHTML = deepListHTML(WHYDB.slice(0,6), "", false); };
     di.addEventListener("input",upd); di.addEventListener("keyup",upd);
     setTimeout(()=>{ try{di.focus();}catch(e){} }, 120);
   }
