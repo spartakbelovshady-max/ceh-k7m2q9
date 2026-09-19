@@ -430,8 +430,15 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 /* ============ ХРАНИЛИЩЕ (телефон / резерв в памяти) ============ */
 const MEM = {};
 const store = {
+  _j: {},                                     /* разобранный JSON, чтобы не парсить на каждую букву */
   get(k){ try{ const v=localStorage.getItem(k); return v===null?(MEM[k]??null):v; }catch(e){ return MEM[k]??null; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ MEM[k]=v; } }
+  set(k,v){ delete store._j[k]; try{ localStorage.setItem(k,v); }catch(e){ MEM[k]=v; } },
+  json(k,def){
+    if(k in store._j) return store._j[k];
+    let v; try{ v=JSON.parse(store.get(k)||def); }catch(e){ v=JSON.parse(def); }
+    if(v===null||typeof v!=="object") v=JSON.parse(def);
+    return (store._j[k]=v);
+  }
 };
 
 /* ============ АЛЛЕИ (заполняет продавец под свой магазин) ============ */
@@ -2300,7 +2307,7 @@ function siteSmart(f, r){
 }
 
 /* ---------- ЛМ-коды: своя база под конкретный зал ---------- */
-function getCodes(){ try{ return JSON.parse(store.get("codes")||"[]"); }catch(e){ return []; } }
+function getCodes(){ return store.json("codes","[]"); }
 function setCodes(v){ store.set("codes", JSON.stringify(v)); }
 function codeKey(flowId, head){ return flowId + "|" + String(head).replace(/\s+/g," ").trim(); }
 function codesFor(flowId, head){
@@ -3672,11 +3679,11 @@ const PAINT = {
 };
 
 /* ============ КЕЙСЫ ОТДЕЛА ============ */
-function getCases(){ try{ return JSON.parse(store.get("cases")||"[]"); }catch(e){ return []; } }
+function getCases(){ return store.json("cases","[]"); }
 function setCases(v){ store.set("cases", JSON.stringify(v)); }
 
 /* ============ ЧАСТОТА ОБРАЩЕНИЙ ============ */
-function getUsage(){ try{ return JSON.parse(store.get("usage")||"{}"); }catch(e){ return {}; } }
+function getUsage(){ return store.json("usage","{}"); }
 function bumpUsage(id){ const u=getUsage(); u[id]=(u[id]||0)+1; store.set("usage",JSON.stringify(u)); }
 function topUsed(n){
   const u=getUsage();
@@ -9159,7 +9166,8 @@ function artList(){
   if(ART) return ART;
   ART = ART_RAW.split("\n").map(line=>{
     const p = line.split("~");
-    return {a:p[0], n:p[1], al:p[2], pos:p[3], pol:p[4], top:p[5]==="1", dep:p[6]||""};
+    return {a:p[0], n:p[1], al:p[2], pos:p[3], pol:p[4], top:p[5]==="1", dep:p[6]||"",
+            _n:(p[1]||"").toLowerCase().replace(/\u0451/g,"\u0435")};   /* готовая форма для поиска */
   });
   return ART;
 }
@@ -9249,7 +9257,7 @@ function artSearch(q, limit){
   const sizes = (qn.match(/\d{1,4}/g)||[]);
   const res=[];
   artList().forEach(x=>{
-    const n=x.n.toLowerCase().replace(/ё/g,"е");
+    const n=x._n;
     let hit=0;
     stems.forEach(st=>{ if(hasWord(n,st)) hit++; });
     if(!hit) return;
@@ -9723,11 +9731,11 @@ const CAT_Q = {
 };
 
 /* ---- своя база: записи, добавленные прямо в зале ---- */
-function getMyKB(){ try{ return JSON.parse(store.get("mykb")||"[]"); }catch(e){ return []; } }
+function getMyKB(){ return store.json("mykb","[]"); }
 function setMyKB(v){ store.set("mykb", JSON.stringify(v)); }
 
 /* ---- журнал запросов, на которые не нашлось ответа ---- */
-function getMisses(){ try{ return JSON.parse(store.get("misses")||"[]"); }catch(e){ return []; } }
+function getMisses(){ return store.json("misses","[]"); }
 function logMiss(q){
   q=(q||"").trim(); if(q.length<3) return;
   const list=getMisses().filter(x=>x.toLowerCase()!==q.toLowerCase());
@@ -9736,7 +9744,13 @@ function logMiss(q){
 }
 function clearMisses(){ store.set("misses","[]"); }
 
-function kbAll(){ return KB.concat(getMyKB().map(x=>[x.q,x.a,x.p||"",x.t||x.q])); }
+let _kbAllSrc=null, _kbAll=null;
+function kbAll(){
+  const my=getMyKB();
+  if(_kbAllSrc===my) return _kbAll;          /* getMyKB отдаёт тот же объект, пока запись не менялась */
+  _kbAllSrc=my;
+  return (_kbAll = KB.concat(my.map(x=>[x.q,x.a,x.p||"",x.t||x.q])));
+}
 
 /* Разговорные синонимы: клиент говорит одно, в базе написано другое */
 const SYN = {
@@ -11169,7 +11183,7 @@ function shortAnswer(text){
 }
 
 /* История запросов за смену */
-function getRecent(){ try{ return JSON.parse(store.get("recentq")||"[]"); }catch(e){ return []; } }
+function getRecent(){ return store.json("recentq","[]"); }
 function pushRecent(q){
   q = q.trim(); if(q.length < 2) return;
   const list = getRecent().filter(x=>x.toLowerCase()!==q.toLowerCase());
@@ -12216,12 +12230,23 @@ function wire(){
         pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
       });
     };
-    const upd = () => { S.q = q.value; drawSug();
+    let paintT = 0;
+    const paint = () => { paintT = 0;
       const box=document.getElementById("results");
       if(box){ box.innerHTML = resultsHTML(); wireCards(); } };
+    /* input и keyup приходят на один и тот же символ — считаем только когда текст правда изменился */
+    const upd = () => {
+      if(q.value === S.q) return;
+      S.q = q.value; drawSug();
+      if(paintT) clearTimeout(paintT);
+      paintT = setTimeout(paint, 110);       /* пока набирают — полный поиск не гоняем */
+    };
+    const updNow = () => { if(paintT){ clearTimeout(paintT); paintT=0; }
+      if(q.value !== S.q){ S.q = q.value; drawSug(); }
+      paint(); };
     q.addEventListener("input", upd);
     q.addEventListener("keyup", upd);
-    q.addEventListener("search", upd);
+    q.addEventListener("search", updNow);
     q.addEventListener("change", ()=>pushRecent(q.value));
     q.addEventListener("blur", ()=>{ setTimeout(()=>{ const sb=document.getElementById("sugbox"); if(sb) sb.innerHTML=""; }, 200); });
 
@@ -12235,7 +12260,8 @@ function wire(){
       else if(S.flow){ const sd=DEEP_SEED[S.flow]||FLOWS[S.flow].title;
         box.innerHTML = deepListHTML(sd?whySearch(sd,true):[], "", true); }
       else box.innerHTML = deepListHTML(WHYDB.slice(0,6), "", false); };
-    di.addEventListener("input",upd); di.addEventListener("keyup",upd);
+    const updD = () => { if(di.value===S.deepQ) return; upd(); };
+    di.addEventListener("input",updD); di.addEventListener("keyup",updD);
     setTimeout(()=>{ try{di.focus();}catch(e){} }, 120);
   }
 
@@ -12309,7 +12335,8 @@ function wire(){
         box.innerHTML = list.length ? list.map(x=>`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`).join("")
           : '<div class="note">Ничего не нашлось. Попробуйте другое слово или загляните в «Шпаргалки».</div>';
       }};
-    qqi.addEventListener("input",upd); qqi.addEventListener("keyup",upd);
+    const updQ = () => { if(qqi.value===S.qq) return; upd(); };
+    qqi.addEventListener("input",updQ); qqi.addEventListener("keyup",updQ);
   }
   app.querySelectorAll("[data-shelf]").forEach(inp=>inp.oninput=e=>{
     store.set("shelf:"+inp.dataset.shelf, e.target.value);
