@@ -1,5 +1,5 @@
 /* ЦЕХ — офлайн-кэш. Меняйте номер версии при каждом обновлении приложения. */
-const VERSION = "ceh-v47";
+const VERSION = "ceh-v48";
 const FILES = [
   "./",
   "./index.html",
@@ -11,7 +11,11 @@ const FILES = [
 
 self.addEventListener("install", e => {
   e.waitUntil(
-    caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())
+    caches.open(VERSION)
+      .then(c => Promise.all(FILES.map(f =>
+        fetch(new Request(f, {cache: "reload"})).then(r => r.ok ? c.put(f, r) : null)
+      )))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -30,12 +34,10 @@ self.addEventListener("fetch", e => {
 
   e.respondWith(
     caches.match(e.request).then(hit => {
-      if (hit) {
-        fetch(e.request).then(res => {
-          if (res && res.ok) caches.open(VERSION).then(c => c.put(e.request, res.clone()));
-        }).catch(() => {});
-        return hit;
-      }
+      /* Что уже в кэше — отдаём сразу и в сеть не идём: иначе телефон при каждом
+         открытии тянет весь index.html заново. Новая версия приезжает при смене
+         VERSION и по кнопке «Проверить обновление». */
+      if (hit) return hit;
       return fetch(e.request)
         .then(res => {
           if (res && res.ok) {

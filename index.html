@@ -9256,7 +9256,8 @@ function artSearch(q, limit){
   if(!stems.length) return [];
   const sizes = (qn.match(/\d{1,4}/g)||[]);
   const res=[];
-  artList().forEach(x=>{
+  const all = artList();
+  const scan = x=>{
     const n=x._n;
     let hit=0;
     stems.forEach(st=>{ if(hasWord(n,st)) hit++; });
@@ -9268,13 +9269,53 @@ function artSearch(q, limit){
     sizes.forEach(d=>{ if(new RegExp("(^|[^0-9])"+d+"([^0-9]|$)").test(n)) s+=5; });
     if(x.top) s+=1;
     res.push([x,s]);
-  });
+  };
+  /* по индексу берём только те позиции, где есть слово с нужным началом */
+  const plain = stems.every(st=>/^[\u0430-\u044fa-z0-9]+$/.test(st));
+  if(plain){
+    const idx = artIndex(), seen = new Set();
+    stems.forEach(st=>{ const list = idx.get(st.slice(0,3)); if(list) list.forEach(i=>seen.add(i)); });
+    if(!seen.size) return [];
+    Array.from(seen).sort((a,b)=>a-b).forEach(i=>scan(all[i]));   /* порядок как в каталоге */
+  } else {
+    all.forEach(scan);
+  }
   return res.sort((a,b)=>b[1]-a[1]).slice(0, limit||8).map(x=>x[0]);
 }
 
-/* Сколько позиций на этом метре */
+/* Индекс: первые три буквы слова → номера позиций каталога.
+   Строится один раз при первом поиске, дальше перебираем десятки строк вместо тысяч. */
+let ART_IDX = null;
+function artIndex(){
+  if(ART_IDX) return ART_IDX;
+  const idx = new Map();
+  artList().forEach((x,i)=>{
+    const ws = x._n.match(/[\u0430-\u044fa-z0-9]+/g);
+    if(!ws) return;
+    ws.forEach(w=>{
+      if(w.length<3) return;
+      const k = w.slice(0,3);
+      let a = idx.get(k);
+      if(!a) idx.set(k, a=[]);
+      if(a[a.length-1] !== i) a.push(i);
+    });
+  });
+  return (ART_IDX = idx);
+}
+
+/* Сколько позиций на этом метре — индекс «аллея+метр», строится один раз */
+let ART_POS = null;
 function artAtPos(al, pos){
-  return artList().filter(x=>x.al===String(al) && x.pos===pos);
+  if(!ART_POS){
+    ART_POS = new Map();
+    artList().forEach(x=>{
+      const k = x.al+"\u007e"+x.pos;
+      let a = ART_POS.get(k);
+      if(!a) ART_POS.set(k, a=[]);
+      a.push(x);
+    });
+  }
+  return ART_POS.get(String(al)+"\u007e"+pos) || [];
 }
 
 
@@ -9892,7 +9933,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "44";
+const APP_VERSION = "45";
 const APP_DATE = "19.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
