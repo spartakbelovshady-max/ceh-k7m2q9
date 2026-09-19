@@ -361,16 +361,6 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .artc .arttop{font-family:var(--mono);font-size:10px;color:var(--tape-dark);text-transform:uppercase;
   letter-spacing:.1em;margin-top:6px}
 
-.gam{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:2px;overflow:hidden;background:var(--card)}
-.gamrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;
-  border-bottom:1px solid var(--line);padding:12px 13px;font:inherit;color:inherit}
-.gamrow:last-child{border-bottom:0}
-.gamrow:active{background:var(--tape)}
-.gamrow .gp{flex:0 0 92px;font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--tape);
-  padding:4px 6px;border-radius:2px;text-align:center;letter-spacing:.02em}
-.gamrow .gn{flex:1;font-size:14.5px;font-weight:600;line-height:1.25}
-.gamrow .gc{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
-
 .hbtn.rec, #micBtn.rec{background:var(--alarm)!important;color:#fff!important;border-color:var(--alarm)!important}
 
 .whyc{background:var(--card);border:1px solid var(--line);border-left:5px solid #2F6DA8;
@@ -440,8 +430,15 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 /* ============ ХРАНИЛИЩЕ (телефон / резерв в памяти) ============ */
 const MEM = {};
 const store = {
+  _j: {},                                     /* разобранный JSON, чтобы не парсить на каждую букву */
   get(k){ try{ const v=localStorage.getItem(k); return v===null?(MEM[k]??null):v; }catch(e){ return MEM[k]??null; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ MEM[k]=v; } }
+  set(k,v){ delete store._j[k]; try{ localStorage.setItem(k,v); }catch(e){ MEM[k]=v; } },
+  json(k,def){
+    if(k in store._j) return store._j[k];
+    let v; try{ v=JSON.parse(store.get(k)||def); }catch(e){ v=JSON.parse(def); }
+    if(v===null||typeof v!=="object") v=JSON.parse(def);
+    return (store._j[k]=v);
+  }
 };
 
 /* ============ АЛЛЕИ (заполняет продавец под свой магазин) ============ */
@@ -2310,7 +2307,7 @@ function siteSmart(f, r){
 }
 
 /* ---------- ЛМ-коды: своя база под конкретный зал ---------- */
-function getCodes(){ try{ return JSON.parse(store.get("codes")||"[]"); }catch(e){ return []; } }
+function getCodes(){ return store.json("codes","[]"); }
 function setCodes(v){ store.set("codes", JSON.stringify(v)); }
 function codeKey(flowId, head){ return flowId + "|" + String(head).replace(/\s+/g," ").trim(); }
 function codesFor(flowId, head){
@@ -3682,11 +3679,11 @@ const PAINT = {
 };
 
 /* ============ КЕЙСЫ ОТДЕЛА ============ */
-function getCases(){ try{ return JSON.parse(store.get("cases")||"[]"); }catch(e){ return []; } }
+function getCases(){ return store.json("cases","[]"); }
 function setCases(v){ store.set("cases", JSON.stringify(v)); }
 
 /* ============ ЧАСТОТА ОБРАЩЕНИЙ ============ */
-function getUsage(){ try{ return JSON.parse(store.get("usage")||"{}"); }catch(e){ return {}; } }
+function getUsage(){ return store.json("usage","{}"); }
 function bumpUsage(id){ const u=getUsage(); u[id]=(u[id]||0)+1; store.set("usage",JSON.stringify(u)); }
 function topUsed(n){
   const u=getUsage();
@@ -9169,7 +9166,8 @@ function artList(){
   if(ART) return ART;
   ART = ART_RAW.split("\n").map(line=>{
     const p = line.split("~");
-    return {a:p[0], n:p[1], al:p[2], pos:p[3], pol:p[4], top:p[5]==="1", dep:p[6]||""};
+    return {a:p[0], n:p[1], al:p[2], pos:p[3], pol:p[4], top:p[5]==="1", dep:p[6]||"",
+            _n:(p[1]||"").toLowerCase().replace(/\u0451/g,"\u0435")};   /* готовая форма для поиска */
   });
   return ART;
 }
@@ -9259,7 +9257,7 @@ function artSearch(q, limit){
   const sizes = (qn.match(/\d{1,4}/g)||[]);
   const res=[];
   artList().forEach(x=>{
-    const n=x.n.toLowerCase().replace(/ё/g,"е");
+    const n=x._n;
     let hit=0;
     stems.forEach(st=>{ if(hasWord(n,st)) hit++; });
     if(!hit) return;
@@ -9733,11 +9731,11 @@ const CAT_Q = {
 };
 
 /* ---- своя база: записи, добавленные прямо в зале ---- */
-function getMyKB(){ try{ return JSON.parse(store.get("mykb")||"[]"); }catch(e){ return []; } }
+function getMyKB(){ return store.json("mykb","[]"); }
 function setMyKB(v){ store.set("mykb", JSON.stringify(v)); }
 
 /* ---- журнал запросов, на которые не нашлось ответа ---- */
-function getMisses(){ try{ return JSON.parse(store.get("misses")||"[]"); }catch(e){ return []; } }
+function getMisses(){ return store.json("misses","[]"); }
 function logMiss(q){
   q=(q||"").trim(); if(q.length<3) return;
   const list=getMisses().filter(x=>x.toLowerCase()!==q.toLowerCase());
@@ -9746,7 +9744,13 @@ function logMiss(q){
 }
 function clearMisses(){ store.set("misses","[]"); }
 
-function kbAll(){ return KB.concat(getMyKB().map(x=>[x.q,x.a,x.p||"",x.t||x.q])); }
+let _kbAllSrc=null, _kbAll=null;
+function kbAll(){
+  const my=getMyKB();
+  if(_kbAllSrc===my) return _kbAll;          /* getMyKB отдаёт тот же объект, пока запись не менялась */
+  _kbAllSrc=my;
+  return (_kbAll = KB.concat(my.map(x=>[x.q,x.a,x.p||"",x.t||x.q])));
+}
 
 /* Разговорные синонимы: клиент говорит одно, в базе написано другое */
 const SYN = {
@@ -9888,8 +9892,8 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "43";
-const APP_DATE = "04.09.2026";
+const APP_VERSION = "44";
+const APP_DATE = "19.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
 const CLOSING = [
@@ -10908,105 +10912,6 @@ Object.assign(CARE,{
 });
 
 
-/* Структура аллей — построена из каталога: аллея, метр, гамма, число позиций */
-const GAMMA = [
-  ["46","L1","Бур",76],
-  ["46","L2","Бур",75],
-  ["46","L3","Коронка, Зубило",58],
-  ["46","L4","Сверло, Коронка",134],
-  ["46","L5","Сверло",144],
-  ["46","L6","Сверло, Коронка",93],
-  ["46","L7","Сверло, Коронка, Патрон",83],
-  ["46","L8","Бита, Биты, Наборы",133],
-  ["46","L9","Диск",28],
-  ["46","L10","Пилка",95],
-  ["46","L11","Диск, Алмазный",44],
-  ["46","L12","Диск, Круг",53],
-  ["46","L13","Круг, Чашка",45],
-  ["46","R1","Перфораторы",10],
-  ["46","R2","Дрель, Миксер, Перфораторы",18],
-  ["46","R3","Пила, Лобзики",22],
-  ["46","R4","Фрезер, Пила, Реноватор",27],
-  ["47","L1","Правило",6],
-  ["47","L2","Правило",6],
-  ["47","L3","Ведро, Емкость, Крышка",8],
-  ["47","L4","Емкость",6],
-  ["47","L5","Емкость",5],
-  ["47","L6","Насадки-миксеры",9],
-  ["47","L7","Кельма, Тёрки",19],
-  ["47","L8","Валик, Лезвие, Рубанок",14],
-  ["47","L9","Шпатель",21],
-  ["47","L10","Шпатель",16],
-  ["47","L11","Нож, Лезвия",43],
-  ["47","L12","Пистолет, Скребок, Валик",29],
-  ["47","L13","Щётки",43],
-  ["47","R1","Плиткорез",2],
-  ["47","R2","Плиткорез",4],
-  ["47","R3","Коронка, Диск",64],
-  ["47","R4","Круг, Плиткорез",16],
-  ["47","R5","Насадка",3],
-  ["47","R6","Шпатель, Гладилка",22],
-  ["47","R7","Шпатель",39],
-  ["47","R8","Лист, Рулон",47],
-  ["47","R9","Лист, Водостойкая, Листы",69],
-  ["47","R10","Диск, Круг, Диски",40],
-  ["47","R12","Диск, Круг",52],
-  ["47","R13","Листы, Лента",52],
-  ["48","L1","Рулетка, Дальномер",43],
-  ["48","L2","Нивелир, Детектор",22],
-  ["48","L3","Нивелир",32],
-  ["48","L4","Маркеры, Маркер, Угольник",71],
-  ["48","L5","Уровень, Линейка",43],
-  ["48","L6","Полотно, Ножовка, Держатель",37],
-  ["48","L7","Пила, Ножовка",23],
-  ["48","L8","Пила, Стусло",8],
-  ["48","L9","Струбцина",24],
-  ["48","L10","Струбцина",27],
-  ["48","L11","Напильник, Набор, Стамеска",52],
-  ["48","L12","Скобы, Степлер, Гвозди",25],
-  ["48","L13","Заклёпочники, Пистолет, Стержни",23],
-  ["48","R1","Отвёртки",81],
-  ["48","R2","Отвёртки, Набор, Ключ",76],
-  ["48","R3","Плоскогубцы, Длинногубцы",89],
-  ["48","R4","Ножницы, Клещи",63],
-  ["48","R5","Клещи, Плоскогубцы",74],
-  ["48","R6","Ключ",117],
-  ["48","R7","Ключ, Набор",70],
-  ["48","R8","Головка",143],
-  ["48","R9","Набор",14],
-  ["48","R10","Ломы-гвоздодёры, Зубило, Кернер",23],
-  ["48","R11","Кувалда, Киянка",23],
-  ["48","R12","Молоток, Молотки",30],
-  ["49","L1","Генератор",9],
-  ["49","L2","Генератор",8],
-  ["49","L3","Станок, Круг",32],
-  ["49","L4","Жилет, Брюки",48],
-  ["49","L5","Полуботинки, Ботинки",49],
-  ["49","R1","Сварочные аппараты, Проволока",18],
-  ["49","R2","Сварочные аппараты, Электроды",13],
-  ["49","R3","Сварочные аппараты, Электроды",24],
-  ["49","R4","Маска",26],
-  ["49","R5","Маска",2],
-  ["49","R6","Флюс, Припой, Набор",42],
-  ["49","R7","Насадка, Перчатки, Лампа",14],
-  ["49","R8","Перчатки, Рукавицы",23],
-  ["49","R9","Респиратор, Фильтр, Комбинезон",14],
-  ["49","R10","Очки",28],
-  ["49","R11","Краскопульт",8],
-  ["49","R12","Краскопульт",4],
-  ["49","R13","Термофен, Сварочное",12],
-  ["50","L1","Пылесос",12],
-  ["50","L2","Мешки, Фильтр",67],
-  ["50","L3","Минимойка, Автошампунь, Активная",14],
-  ["50","L4","Минимойка, Смазка, Активная",18],
-  ["50","L5","Смазка, Тиски",64],
-  ["50","R1","Пила, Диск",15],
-  ["50","R2","Станок, Пила",6],
-  ["50","R3","Компрессор, Шланг",14],
-  ["50","R4","Компрессор",6],
-  ["50","R5","Переходник, Переходники",115]
-];
-
 /* ============ КАРТА ПОЛОК ПО МЕТРАМ ============
    L — левая сторона прохода, R — правая. Цифра = номер метра от начала аллеи.
    Формат общий для всех аллей: добавляются по мере обхода зала. */
@@ -11278,7 +11183,7 @@ function shortAnswer(text){
 }
 
 /* История запросов за смену */
-function getRecent(){ try{ return JSON.parse(store.get("recentq")||"[]"); }catch(e){ return []; } }
+function getRecent(){ return store.json("recentq","[]"); }
 function pushRecent(q){
   q = q.trim(); if(q.length < 2) return;
   const list = getRecent().filter(x=>x.toLowerCase()!==q.toLowerCase());
@@ -11357,22 +11262,13 @@ function resultsHTML(){
     if(S.aisle && G[S.aisle]){
       const zones = Object.keys(G[S.aisle]).sort((a,b)=>a.localeCompare(b,"ru"));
       const isNum = /^\d+$/.test(S.aisle);
-      const gam = GAMMA.filter(g=>g[0]===S.aisle);
       const total = Object.values(G[S.aisle]).reduce((n,v)=>n+v.length,0);
 
       h += `<button class="back" id="aisleBack">← Все аллеи</button>
         <div class="res-h"><div class="rl">${isNum?"Аллея":"Отдел"}</div><h2>${esc(S.aisle)}</h2>
           <div style="font-family:var(--mono);font-size:12px;color:#B9BEC0;margin-top:6px">
-            ${gam.length?gam.length+" мест · ":""}${total} категорий подбора</div></div>`;
+            ${total} категорий подбора</div></div>`;
 
-      if(gam.length){
-        h += `<div class="eyebrow">Что где лежит</div><div class="gam">`
-          + gam.map(g=>`<button class="gamrow" data-req="${esc(g[2].split(",")[0])}">
-              <span class="gp">${g[1][0]==="L"?"слева":"справа"} ${esc(g[1].slice(1))} м</span>
-              <span class="gn">${esc(g[2])}</span>
-              <span class="gc">${g[3]}</span></button>`).join("")
-          + `</div>`;
-      }
 
       const top = (AISLE_TOP[S.aisle]||[]).filter(id=>FLOWS[id]);
       const used = topUsed(20).filter(id=>aisle(FLOWS[id].zone)===S.aisle);
@@ -12334,12 +12230,23 @@ function wire(){
         pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
       });
     };
-    const upd = () => { S.q = q.value; drawSug();
+    let paintT = 0;
+    const paint = () => { paintT = 0;
       const box=document.getElementById("results");
       if(box){ box.innerHTML = resultsHTML(); wireCards(); } };
+    /* input и keyup приходят на один и тот же символ — считаем только когда текст правда изменился */
+    const upd = () => {
+      if(q.value === S.q) return;
+      S.q = q.value; drawSug();
+      if(paintT) clearTimeout(paintT);
+      paintT = setTimeout(paint, 110);       /* пока набирают — полный поиск не гоняем */
+    };
+    const updNow = () => { if(paintT){ clearTimeout(paintT); paintT=0; }
+      if(q.value !== S.q){ S.q = q.value; drawSug(); }
+      paint(); };
     q.addEventListener("input", upd);
     q.addEventListener("keyup", upd);
-    q.addEventListener("search", upd);
+    q.addEventListener("search", updNow);
     q.addEventListener("change", ()=>pushRecent(q.value));
     q.addEventListener("blur", ()=>{ setTimeout(()=>{ const sb=document.getElementById("sugbox"); if(sb) sb.innerHTML=""; }, 200); });
 
@@ -12353,7 +12260,8 @@ function wire(){
       else if(S.flow){ const sd=DEEP_SEED[S.flow]||FLOWS[S.flow].title;
         box.innerHTML = deepListHTML(sd?whySearch(sd,true):[], "", true); }
       else box.innerHTML = deepListHTML(WHYDB.slice(0,6), "", false); };
-    di.addEventListener("input",upd); di.addEventListener("keyup",upd);
+    const updD = () => { if(di.value===S.deepQ) return; upd(); };
+    di.addEventListener("input",updD); di.addEventListener("keyup",updD);
     setTimeout(()=>{ try{di.focus();}catch(e){} }, 120);
   }
 
@@ -12427,7 +12335,8 @@ function wire(){
         box.innerHTML = list.length ? list.map(x=>`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`).join("")
           : '<div class="note">Ничего не нашлось. Попробуйте другое слово или загляните в «Шпаргалки».</div>';
       }};
-    qqi.addEventListener("input",upd); qqi.addEventListener("keyup",upd);
+    const updQ = () => { if(qqi.value===S.qq) return; upd(); };
+    qqi.addEventListener("input",updQ); qqi.addEventListener("keyup",updQ);
   }
   app.querySelectorAll("[data-shelf]").forEach(inp=>inp.oninput=e=>{
     store.set("shelf:"+inp.dataset.shelf, e.target.value);
