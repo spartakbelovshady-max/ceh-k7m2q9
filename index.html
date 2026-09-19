@@ -3743,7 +3743,7 @@ const PAINT = {
 
 /* ============ КЕЙСЫ ОТДЕЛА ============ */
 function getCases(){ return store.json("cases","[]"); }
-function setCases(v){ store.set("cases", JSON.stringify(v)); }
+function setCases(v){ store.set("cases", JSON.stringify(v)); resetSearchIndex(); }
 
 /* ============ ЧАСТОТА ОБРАЩЕНИЙ ============ */
 function getUsage(){ return store.json("usage","{}"); }
@@ -9846,7 +9846,7 @@ const CAT_Q = {
 
 /* ---- своя база: записи, добавленные прямо в зале ---- */
 function getMyKB(){ return store.json("mykb","[]"); }
-function setMyKB(v){ store.set("mykb", JSON.stringify(v)); }
+function setMyKB(v){ store.set("mykb", JSON.stringify(v)); resetSearchIndex(); }
 
 /* ---- журнал запросов, на которые не нашлось ответа ---- */
 function getMisses(){ return store.json("misses","[]"); }
@@ -9868,6 +9868,16 @@ function kbAll(){
 
 /* Разговорные синонимы: клиент говорит одно, в базе написано другое */
 const SYN = {
+ /* живая речь клиента → слова, которыми это названо у нас */
+ "закисшая":"смазка проникающая ключ","закисший":"смазка проникающая ключ","прикипел":"смазка проникающая",
+ "открутить":"ключ головка смазка","отвернуть":"ключ головка","сорвал":"экстрактор ключ грани",
+ "слизал":"экстрактор ключ грани","грязь":"мойка высокого давления","помыть":"мойка высокого давления",
+ "отмыть":"мойка высокого давления","двор":"мойка высокого давления","фасад":"мойка высокого давления",
+ "отверстие":"сверло бур коронка","повесить":"дюбель анкер крепеж","держало":"дюбель анкер крепеж",
+ "закрепить":"дюбель анкер крепеж","покрасить":"краскопульт валик","покраска":"краскопульт валик",
+ "красить":"краскопульт валик","заточить":"заточка станок круг","наточить":"заточка станок круг",
+ "тупой":"заточка круг","пыль":"пылесос респиратор","пылит":"пылесос пылеудаление",
+
  "бумага":"наждачка абразив шкурка зерно","бумагу":"наждачка абразив шкурка зерно","бумаги":"наждачка абразив шкурка",
  "шкурка":"наждачка абразив зерно","шкурку":"наждачка абразив зерно","шкурить":"шлифовать зашкурить абразив",
  "зашкурить":"шлифовать абразив","ошкурить":"шлифовать абразив","затереть":"шлифовать затирка",
@@ -9908,30 +9918,7 @@ function contentWords(q){
           .filter(w=>w.length>2 && !STOP.has(w));
 }
 
-function kbSearch(q){
-  const content = contentWords(q);
-  const raw = expandQuery(q).filter(w=>w.length>2 && !STOP.has(w));
-  if(!raw.length) return [];
-  const stems = raw.map(stem);
-  const need  = content.map(stem);          /* значимые слова самого запроса */
-  const res=[];
-  kbAll().forEach(item=>{
-    const title=(item[0]||"").toLowerCase().replace(/ё/g,"е");
-    const tags =String(item[3]||"").toLowerCase().replace(/ё/g,"е");
-    const body =String(item[1]||"").toLowerCase().replace(/ё/g,"е");
-    const key  = title+" "+tags;             /* заголовок и теги — то, о чём запись */
-    /* КАЖДОЕ значимое слово запроса должно найтись в заголовке или тегах */
-    if(need.length && !need.every(w=>hasWord(key,w))) return;
-    let s=0;
-    stems.forEach(st=>{
-      if(hasWord(title,st)) s+=4;
-      else if(hasWord(tags,st)) s+=3;
-      else if(hasWord(body,st)) s+=1;
-    });
-    if(s>=3) res.push([item,s]);
-  });
-  return res.sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]);
-}
+/* Поиск по базе ответов теперь делает общий движок — см. searchAll(). */
 
 /* ============ КЛАССИФИКАЦИЯ АЛМАЗНЫХ ДИСКОВ ============ */
 const DISK_TYPES = [
@@ -10006,7 +9993,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "47";
+const APP_VERSION = "48";
 const APP_DATE = "19.09.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -11350,6 +11337,236 @@ function aisleOrder(keys){
   });
 }
 
+
+/* ============================================================
+   ПОИСК ПО ВСЕМУ СРАЗУ
+   Человек говорит живой фразой, а не ключевым словом. Поэтому:
+   — слова-паразиты выбрасываем;
+   — окончания срезаем, чтобы «брошюрования» и «брошюровка» сошлись;
+   — совпасть должно ХОТЯ БЫ одно слово, а не все сразу;
+   — опечатка в одну букву прощается;
+   — если не нашлось ничего — отвечаем честно, а не молчим.
+   ============================================================ */
+
+/* Живая речь: само по себе не ищется */
+const FILLER = new Set([...STOP,
+ "вас","нас","вам","нам","нибудь","либо","что","чтото","чего","чему","чем","кто","кому",
+ "так","такое","такая","такой","такие","тут","там","вот","ещё","еще","уже","тоже","только",
+ "штука","штуковина","приблуда","фигня","хрень","штучка","вещь","вещица","предмет",
+ "посоветуйте","подберите","помогите","ищу","искал","ищем","смотрю","интересует","интересно",
+ "имеется","имеются","продается","продаете","бывает","бывают","найдется","найдется","будет",
+ "добрый","день","утро","вечер","ночи","слушайте","послушайте","извините","простите",
+ "который","которая","которое","которые","чтобы","чтоб","если","когда","потом","затем",
+ "очень","самый","самая","самое","совсем","просто","вообще","примерно","около","типа","вроде",
+ "меня","него","них","один","одна","одно","два","две","пара","парочка","немного","чуть"]);
+
+/* Окончания — длинные раньше коротких */
+const SUFFIXES = ["ированием","ированию","ирования","ирование","ованием","ованию","ования","ование",
+ "аторами","аторов","аторам","аторах","атором","аторы","атора","атору","аторе","атор",
+ "ениями","ениям","ениях","ением","ения","ению","ении","ение",
+ "овками","овкам","овках","овкой","овки","овка","овку","овке",
+ "остью","остей","ости","ость","ками","кам","ках","ков","кой","ки","ку","ка","ке",
+ "ами","ями","ого","его","ому","ему","ыми","ими","ые","ие","ая","яя","ое","ее",
+ "ах","ях","ам","ям","ом","ем","ов","ев","ей","ой","ый","ий","ую","юю","ья","ье","ью",
+ "а","я","и","ы","о","е","у","ю","ь","й"].sort((a,b)=>b.length-a.length);
+
+/* Основа слова: «брошюрования», «брошюровка», «брошюратор» → «брошюр» */
+function rstem(w){
+  w = w.replace(/ё/g,"е");
+  if(w.length < 5) return w;
+  for(let i=0;i<SUFFIXES.length;i++){
+    const s = SUFFIXES[i];
+    if(w.length - s.length >= 4 && w.endsWith(s)) return w.slice(0, w.length - s.length);
+  }
+  return w;
+}
+
+/* Одна основа — продолжение другой: «наждач» и «наждачн» это одно слово.
+   Но «шуруп» и «шурупаверт» — разные: хвост слишком длинный, это не окончание. */
+function stemMatch(a,b){
+  if(a===b) return true;
+  if(a.length<4 || b.length<4) return false;
+  const lo = a.length<b.length ? a : b, hi = a.length<b.length ? b : a;
+  if(hi.indexOf(lo)!==0) return false;
+  return (hi.length-lo.length) <= 2 || lo.length/hi.length >= 0.62;
+}
+
+function stemsOf(text){
+  const out=[], seen=new Set();
+  String(text||"").toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).forEach(w=>{
+    if(w.length<3 || FILLER.has(w)) return;
+    const st = /^\d/.test(w) ? w : rstem(w);
+    if(!seen.has(st)){ seen.add(st); out.push(st); }
+  });
+  return out;
+}
+
+/* Слова запроса плюс то, как это же называют в каталоге и в базе */
+function queryStems(q){
+  const words = String(q||"").toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).filter(Boolean);
+  const bag = words.slice();
+  words.forEach(w=>{
+    if(SYN[w])     bag.push.apply(bag, SYN[w].split(" "));
+    if(ART_SYN[w]) bag.push.apply(bag, ART_SYN[w].split(" "));
+  });
+  const out=[], seen=new Set();
+  bag.forEach(w=>{
+    if(w.length<3 || FILLER.has(w)) return;
+    const st = /^\d/.test(w) ? w : rstem(w);
+    if(!seen.has(st)){ seen.add(st); out.push(st); }
+  });
+  return out;
+}
+
+/* Что вообще ищем: подборы, готовые ответы, шпаргалки, короткие ответы, кейсы отдела */
+function buildDocs(){
+  const docs=[];
+  const plain = s => String(s||"").replace(/<[^>]+>/g," ");
+  Object.keys(FLOWS).forEach(k=>{
+    const f=FLOWS[k];
+    docs.push({t:"flow", id:k, fields:[[f.title,6],[f.desc,2],[f.tags,3],[f.zone,2],[f.site||"",2]]});
+  });
+  Object.keys(SLANG).forEach(w=>{
+    const v=SLANG[w];
+    (Array.isArray(v)?v:[v]).forEach(id=>{ if(FLOWS[id]) docs.push({t:"flow", id:id, fields:[[w,6]]}); });
+  });
+  kbAll().forEach((x,i)=>{
+    docs.push({t:"kb", id:i, item:x, fields:[[x[0],6],[String(x[3]||""),3],[plain(x[1]),1],[String(x[2]||""),1]]});
+  });
+  REF.forEach(r=>{ docs.push({t:"ref", id:r.id, ref:r, fields:[[r.t,5],[r.tags||"",3]]}); });
+  QUICK.forEach((x,i)=>{ docs.push({t:"quick", id:i, row:x, fields:[[x[0],5],[x[1],2]]}); });
+  getCases().forEach((c,i)=>{ docs.push({t:"case", id:i, row:c, fields:[[c.t,5],[c.r,2]]}); });
+  MATERIALS.forEach(m=>{ docs.push({t:"mat", id:m[1], row:m, fields:[[m[0],5],[m[1],3]]}); });
+  return docs;
+}
+
+let SIDX=null, SDOCS=null;
+function resetSearchIndex(){ SIDX=null; SDOCS=null; }
+function searchIndex(){
+  if(SIDX) return SIDX;
+  SDOCS = buildDocs();
+  const idx = new Map();
+  SDOCS.forEach((d,di)=>{
+    const best = new Map();
+    d.fields.forEach(f=>{
+      stemsOf(f[0]).forEach(st=>{ if(!best.has(st) || best.get(st)<f[1]) best.set(st,f[1]); });
+    });
+    best.forEach((w,st)=>{
+      const k = st.slice(0,4);
+      let a = idx.get(k);
+      if(!a) idx.set(k, a=[]);
+      a.push([di,w,st]);
+    });
+  });
+  return (SIDX=idx);
+}
+
+/* Опечатка в одну букву: «перфаратор», «шурупаверт» */
+function lev1(a,b){
+  if(a===b) return true;
+  const la=a.length, lb=b.length;
+  if(Math.abs(la-lb)>1) return false;
+  let i=0, j=0, diff=0;
+  while(i<la && j<lb){
+    if(a[i]===b[j]){ i++; j++; continue; }
+    if(++diff>1) return false;
+    if(la>lb) i++; else if(lb>la) j++; else { i++; j++; }
+  }
+  return true;
+}
+function fuzzyPostings(idx, st){
+  const k = st.slice(0,4), out=[];
+  idx.forEach((list,key)=>{
+    if(Math.abs(key.length-k.length)>1) return;
+    if(!lev1(key,k)) return;
+    list.forEach(p=>{ if(lev1(p[2],st)) out.push(p); });
+  });
+  return out;
+}
+
+/* Главный поиск. Совпало одно слово — уже результат, просто ниже в списке. */
+function searchAll(q){
+  const terms = queryStems(q);
+  const res = {flows:[], kb:[], refs:[], quick:[], cases:[], mats:[], best:0, terms:terms, unknown:[]};
+  if(!terms.length) return res;
+  const idx = searchIndex();
+  const acc = new Map();
+  terms.forEach((t,ti)=>{
+    let post = idx.get(t.slice(0,4)) || [];
+    let hit = post.filter(p=>stemMatch(p[2],t));
+    let k = 1;
+    if(!hit.length){ res.unknown.push(t); hit = fuzzyPostings(idx,t); k = 0.45; }
+    hit.forEach(p=>{
+      let c = acc.get(p[0]);
+      if(!c){ c = {s:0, seen:new Set()}; acc.set(p[0],c); }
+      c.s += p[1]*k;
+      c.seen.add(ti);
+    });
+  });
+  const ranked=[];
+  acc.forEach((c,di)=>{
+    const cover = c.seen.size/terms.length;
+    ranked.push([SDOCS[di], c.s*(0.35+0.65*cover)*(cover>=1?1.4:1)]);
+  });
+  ranked.sort((a,b)=>b[1]-a[1]);
+  if(ranked.length) res.best = ranked[0][1];
+  /* Порог считаем в каждом разделе свой: сильный ответ из базы не должен
+     срезать подходящий подбор — это разные полки выдачи, а не один список. */
+  const RATIO = {flow:0.5, kb:0.4, ref:0.45, quick:0.45, case:0.45, mat:0.5};
+  const topOf = {};
+  ranked.forEach(r=>{ const t=r[0].t; if(topOf[t]===undefined) topOf[t]=r[1]; });
+  const seenFlow = new Set(), seenRef = new Set();
+  ranked.forEach(r=>{
+    const d=r[0];
+    if(r[1] < Math.max(2.2, topOf[d.t]*(RATIO[d.t]||0.45))) return;
+    if(d.t==="flow"){ if(seenFlow.has(d.id)) return; seenFlow.add(d.id); if(FLOWS[d.id]) res.flows.push(d.id); }
+    else if(d.t==="kb")   res.kb.push(d.item);
+    else if(d.t==="ref"){ if(seenRef.has(d.id)) return; seenRef.add(d.id); res.refs.push(d.ref); }
+    else if(d.t==="quick") res.quick.push(d.row);
+    else if(d.t==="case")  res.cases.push(d.row);
+    else if(d.t==="mat")   res.mats.push(d.row);
+  });
+  return res;
+}
+
+/* ---- Чего у нас нет: отвечаем честно и отправляем туда, где есть ----
+   Слева — основы слов (окончания срезаны), справа — что сказать клиенту.
+   Список правьте под свой магазин. */
+const NOT_OURS = [
+ [["брошюр","переплет","дырокол","ламинир","канцеляр","скоросшиват","файлик"],
+  "Канцелярия", "Брошюровщиков, переплёта и канцтоваров в строительном магазине нет — это канцелярский магазин."],
+ [["обои","обойн","колеровк","эмал","шпаклевк","штукатурк","цемент","пескобетон","саморавн"],
+  "Отделочные материалы и краски", "Сам материал — соседний отдел. У нас инструмент под него: шпатели, правила, миксеры, краскопульты."],
+ [["смесител","унитаз","раковин","сифон","полотенцесушител","бачок","биде","инсталляц"],
+  "Сантехника", "Сантехника — другой отдел. У нас инструмент и фитинги под пневматику, не под воду."],
+ [["розетк","выключател","щиток","лампочк","светильник","люстр","бра","патрон е27","автомат дифф"],
+  "Электротовары и свет", "Электрику и свет держит другой отдел. У нас инструмент электрика: стрипперы, пресс-клещи, кабелерезы."],
+ [["ламинат","линолеум","плинтус","ковролин","паркет","подложк","керамогранит"],
+  "Напольные покрытия", "Само покрытие в другом отделе. У нас инструмент для укладки и подрезки."],
+ [["межкомнатн","наличник","доборн","подоконник","откос"],
+  "Двери и окна", "Двери, окна и всё к ним — отдельный отдел."],
+ [["семен","удобрен","газонокосилк","рассад","теплиц","саженц"],
+  "Сад", "Садовый отдел рядом. У нас из садового только то, что режет, копает и крепит."],
+ [["шкаф","табурет","столешниц","диван","матрас","кроват"],
+  "Мебель и кухни", "Мебель — другой отдел."]
+];
+/* Проверяем только те слова, которых приложение вообще не знает:
+   «кабель» и «наждачная бумага» у нас свои, в чужой отдел их отправлять нельзя. */
+function notOurs(unknown){
+  for(let i=0;i<NOT_OURS.length;i++){
+    const row = NOT_OURS[i];
+    for(let j=0;j<unknown.length;j++){
+      const t = unknown[j];
+      for(let n=0;n<row[0].length;n++){
+        const k = row[0][n];
+        if(t===k || (t.length>=5 && k.length>=5 && (t.indexOf(k)===0 || k.indexOf(t)===0)))
+          return {dept:row[1], text:row[2]};
+      }
+    }
+  }
+  return null;
+}
+
 function resultsHTML(){
   const q = S.q.trim().toLowerCase();
   let h = "";
@@ -11439,6 +11656,7 @@ function resultsHTML(){
   }
 
   /* ---- поиск ---- */
+  const hBeforePos = h.length;
   const qUp = q.toUpperCase().replace(/[^A-ZА-Я0-9 ]/g," ").trim();
   const posM = qUp.replace(/\s/g,"").match(/^(\d{2})?([LR])(\d+)(\d{2})?$/);
   const alFilter = (qUp.match(/\b(4[6-9]|50)\b/)||[])[0] || null;
@@ -11479,6 +11697,7 @@ function resultsHTML(){
       });
     });
   }
+  const posShown = h.length > hBeforePos;
   const arts = artSearch(q, 6);
   if(arts.length){
     h += `<div class="eyebrow">Товар в зале · точный адрес</div>`;
@@ -11491,7 +11710,8 @@ function resultsHTML(){
       ${x.top?'<div class="arttop">ТОП — держим в наличии</div>':""}
     </div>`);
   }
-  const kb = kbSearch(q);
+  const FOUND = searchAll(q);
+  const kb = FOUND.kb.slice(0,3);
   const kbMain = kb.slice(0,1), kbMore = kb.slice(1,3);
   if(kb.length){
     h += `<div class="oneline">
@@ -11516,21 +11736,31 @@ function resultsHTML(){
     h += `<div class="eyebrow">Клиент сказал так — значит нужен${sl.length>1?" (уточните, что именно)":""}</div>`
        + sl.map(id=>flowCard(id)).join("");
   }
-  const words = q.split(/\s+/).filter(Boolean);
-  const hit = txt => { const t=txt.toLowerCase(); return words.every(w=>t.includes(w)); };
-  const keys = Object.keys(FLOWS).filter(k=>{ const f=FLOWS[k]; return hit(f.title+" "+f.desc+" "+f.tags+" "+f.zone); });
-  const refs = REF.filter(r=>hit(r.t+" "+r.tags));
-  const kits = [];
-  const cases = getCases().filter(c=>hit(c.t+" "+c.r));
-  const qas = QUICK.filter(x=>hit(x[0]+" "+x[1])).slice(0,4);
+  const keys  = FOUND.flows.filter(k=>sl.indexOf(k)<0).slice(0,8);
+  const refs  = FOUND.refs.slice(0,6);
+  const kits  = [];
+  const cases = FOUND.cases.slice(0,3);
+  const qas   = FOUND.quick.slice(0,4);
   if(qas.length){ h+=`<div class="eyebrow">Короткий ответ</div>`;
     qas.forEach(x=>h+=`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`); }
   if(cases.length){ h+=`<div class="eyebrow">Кейсы отдела</div>`;
     cases.forEach(c=>h+=`<div class="casecard"><div class="cn">${esc(c.t)}</div><div class="cr">${esc(c.r)}</div></div>`); }
-  if(!keys.length && !refs.length && !kits.length && !cases.length && !qas.length && !kb.length && !arts.length)
-    logMiss(S.q);
-    h += `<div class="note" style="margin-top:14px">Ничего не нашлось. Попробуйте другое слово: «бетон», «крепёж», «резать», «шлифовать», «замер», «смазка».</div>
-      ${S.addKb ? `<div class="kbform">
+  const nothing = !keys.length && !refs.length && !kits.length && !cases.length
+                  && !qas.length && !kb.length && !arts.length && !sl.length && !posShown;
+  const off = notOurs(FOUND.unknown);
+  if(nothing) logMiss(S.q);
+  if(nothing || off){
+    h += off
+      ? `<div class="block pick" style="border-left-color:var(--alarm)">
+           <h3>Этого у нас нет: ${esc(off.dept)}</h3>
+           <div style="font-size:14.5px;color:var(--ink-2)">${esc(off.text)}</div>
+           <div style="font-size:13px;color:var(--ink-3);margin-top:8px">Скажите это прямо — человек уйдёт с ответом, а не с ощущением, что его отфутболили.</div>
+         </div>`
+      : `<div class="note" style="margin-top:14px">По запросу «${esc(S.q)}» в отделе инструментов ничего не нашлось.
+           Попробуйте сказать иначе — что человек <b>делает</b>: «сверлить бетон», «снять краску», «резать плитку».
+           Если такого у нас правда нет — так и скажите клиенту и запишите запрос ниже, чтобы отдел о нём узнал.</div>`;
+  }
+  h += `${S.addKb ? `<div class="kbform">
           <div class="kbfh">Записать ответ в базу</div>
           <div class="kbfn">Один раз запишете — приложение будет находить это всегда. Запись останется у вас и уйдёт коллегам вместе с кодом настроек.</div>
           <input id="nkq" placeholder="Запрос, как спрашивают" value="${esc(S.q)}" autocomplete="off">
@@ -11558,7 +11788,7 @@ function resultsHTML(){
 
 function viewList(){
   return `<div class="search">
-    <input id="q" type="search" placeholder="Что ищем? Коронка 68, наждачка, кабель, L9…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
+    <input id="q" type="search" placeholder="Спросите словами клиента: чем снять краску, дырка в бетоне, коронка 68, L9…" value="${esc(S.q)}" autocomplete="off" enterkeyhint="search">
     <button class="hbtn" id="micBtn" style="background:var(--ink);color:var(--tape);border-color:var(--ink);font-size:18px;padding:0 14px" title="Сказать голосом">🎤</button>
   </div>
   <div class="saved" id="micMsg" style="min-height:16px;padding-left:2px"></div>
