@@ -1,5 +1,5 @@
 /* ЦЕХ — офлайн-кэш. Меняйте номер версии при каждом обновлении приложения. */
-const VERSION = "ceh-v71";
+const VERSION = "ceh-v72";
 const FILES = [
   "./",
   "./index.html",
