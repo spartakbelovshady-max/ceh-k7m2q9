@@ -242,6 +242,30 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .must .mw{font-size:14px;color:#C8CCCE;margin-top:5px;line-height:1.5}
 .must .mw b{color:var(--tape);font-weight:700}
 
+/* ---- код из каталога под строкой подбора ---- */
+.var{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:baseline;margin-top:7px;font-size:13.5px;line-height:1.35}
+.var .lm{font-family:var(--mono);font-size:12.5px;background:var(--ink);color:var(--tape);padding:2px 6px;border-radius:2px;letter-spacing:.04em;white-space:nowrap}
+.var .vn{font-weight:600;color:var(--ink)}
+.var .vad{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.must .var .lm{background:var(--tape);color:var(--ink)}
+.must .var .vn{color:#fff}
+.must .var .vad{color:#C8CCCE}
+.vlab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-top:9px}
+
+/* ---- «взять вместе»: список с отметками ---- */
+.block.tog .m{border-bottom:1px dashed var(--line);padding:10px 0 10px 32px;position:relative;cursor:pointer}
+.block.tog .m:last-child{border-bottom:0;padding-bottom:2px}
+.block.tog h3 + .m{padding-top:4px}
+.block.tog .m::before{content:"";position:absolute;left:0;top:11px;width:18px;height:18px;border:2px solid var(--ink-3);border-radius:2px;background:#fff}
+.block.tog h3 + .m::before{top:5px}
+.block.tog .m.on::before{background:var(--ok);border-color:var(--ok)}
+.block.tog .m.on::after{content:"";position:absolute;left:7px;top:13px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.block.tog h3 + .m.on::after{top:7px}
+.block.tog .mn{font-weight:700;font-size:15.5px;line-height:1.3}
+.block.tog .mt{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px;margin-left:8px;vertical-align:2px}
+.block.tog .mt.siz{background:#E3EEF7;color:#2F6DA8}
+.block.tog .mt.miss{background:#FBE9C2;color:#8A6400}
+
 .closing{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);padding:14px;margin-top:8px;border-radius:2px}
 .closing h3{font-family:var(--display);font-size:16px;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:11px}
 .closing .ci{padding:10px 0 10px 30px;border-bottom:1px dashed var(--line);position:relative;cursor:pointer}
@@ -367,6 +391,7 @@ details.kb.more[open] summary::after{content:"Свернуть ▴"}
 .artc .artlm{font-family:var(--mono);font-size:13px;background:var(--ink);color:var(--tape);
   padding:3px 7px;border-radius:2px;letter-spacing:.05em}
 .artc .artad{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.artc .artmore{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);margin-top:6px;line-height:1.45}
 .artc .arttop{font-family:var(--mono);font-size:10px;color:var(--tape-dark);text-transform:uppercase;
   letter-spacing:.1em;margin-top:6px}
 
@@ -9963,14 +9988,22 @@ const ART_SYN = {
 /* Только для живого поиска: подборы и коды сопутствующих ищут по-старому, строго */
 const ART_SYN_LIVE = {
  "шуруповерт":"дрель+акк дрель+шур","шурик":"дрель+акк дрель+шур",
+ "plus":"sdspl","плюс":"sdspl","max":"sdsm","макс":"sdsm",
+ /* в живом поиске «торцовка» — это пила и торц. сразу, а не любая пила */
+ "торцовка":"пила+торц","торцовку":"пила+торц","торцовки":"пила+торц","торцовочная":"пила+торц",
+ "циркулярка":"пила+цирк","циркулярку":"пила+цирк","циркулярная":"пила+цирк",
+ "сабельная":"пила+саб","сабельную":"пила+саб","электролобзик":"лобзик","электролобзика":"лобзик",
+ /* в каталоге мойки — «МИНИМОЙКА», фены — «ТЕРМОФЕН» */
+ "мойка":"мойк минимойк","мойку":"мойк минимойк","мойки":"мойк минимойк","фен":"фен термофен","фена":"фен термофен",
+ "хвостовик":"бур","хвостовика":"бур","хвостовиков":"бур","хамелеон":"хамелеон lcd","автокомпрессор":"компрессор+автомоб","драчевый":"грубый драчев","драчевой":"грубый драчев","шлифблок":"брусок+шлиф","механический":"механ ручн","точило":"точил станок+заточ станок+точил","точила":"точил станок+заточ",
  "провод":"кабел","выкрутить":"экстрак","вывернуть":"экстрак","сорвал":"экстрак","слизал":"экстрак",
- "керхер":"мойка","кархер":"мойка","торцовку":"пила торц","торцовки":"пила торц","циркулярку":"пила диск",
+ "керхер":"мойка минимойк","кархер":"мойка минимойк","торцовку":"пила торц","торцовки":"пила торц","циркулярку":"пила диск",
  /* клиент говорит «диск», каталог пишет «КРУГ ОТР.» — и наоборот */
  "диск":"круг","диски":"круг","круг":"диск","круги":"диск",
  "нарезать":"метчик плашка","резьбу":"метчик плашка","метчики":"метчик","плашки":"плашка",
  "сварочник":"свар","сварочный":"свар","полуавтомат":"полуавт","инвертор":"инверт",
  "шлифмашина":"шлиф","шлифмашинка":"шлиф","шлифовальная":"шлиф","шлифовальную":"шлиф",
- "точило":"точило заточн","наждак":"точило заточн бумаж","сверла":"сверло","бита":"бита","биты":"бита",
+ "наждак":"станок+заточ бумаж","сверла":"сверло","бита":"бита","биты":"бита",
  "миксер":"миксер"
 };
 /* Как каталог сокращает: «П/МЕТ.», «ПО БЕТ», «Д/ДЕР.» */
@@ -9984,7 +10017,7 @@ const ART_ABBR = [
  [/^комбинир/,"комбинир"],[/^строит/,"строит"],[/^гидравл/,"гидравл"],[/^пневмат/,"пневм"]
 ];
 /* Единицы после числа сами по себе не ищем: «2 метра» — это размер, а не слово */
-const ART_UNIT = /^(м|метр|метра|метров|метре|см|сантиметр\S*|мм|миллиметр\S*|вольт\S*|в|вт|ватт\S*|ампер\S*|ач|а|литр\S*|л|кг|килограмм\S*|бар|дж|джоул\S*|нм|шт|штук\S*|зуб\S*|т|тонн\S*)$/;
+const ART_UNIT = /^(м|метр|метра|метров|метре|см|сантиметр\S*|мм|миллиметр\S*|вольт\S*|в|вт|ватт\S*|квт|киловатт\S*|ампер\S*|ач|а|литр\S*|л|кг|килограмм\S*|бар|дж|джоул\S*|нм|шт|штук\S*|зуб\S*|т|тонн\S*)$/;
 function artExpand(q){
   const words=q.toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9.,]+/).filter(Boolean);
   const out=words.slice();
@@ -9993,15 +10026,26 @@ function artExpand(q){
 }
 /* Размеры из запроса. «2 метра» ищем как «2М» и как 2000 мм — но не как «8ММ» у «РУЛЕТКА 2МX8ММ»;
    «60 см» — как 600 мм. Метки единиц («@м», «@кг», «@г») понимает sizeScore. */
+/* Физическая единица после числа: «12 В», «1200 Вт», «2 А·ч», «20 л» — и в запросе, и в названии */
+function unitOf(u){
+  u = String(u||"");
+  return /^(в|вольт\S*|v)$/.test(u) ? "в" : /^(вт|ватт\S*|w)$/.test(u) ? "вт" : /^(квт|киловатт\S*|kw)$/.test(u) ? "квт"
+       : /^(а|ампер|ампера|амперов|a)$/.test(u) ? "а" : /^(ач|ah|амперчас\S*)$/.test(u) ? "ач" : /^(дж|джоул\S*|j)$/.test(u) ? "дж"
+       : /^(бар|bar)$/.test(u) ? "бар" : /^(л|литр\S*|l)$/.test(u) ? "л" : /^(нм|nm)$/.test(u) ? "нм" : "";
+}
 function artSizes(qn){
   const out=[];
+  qn = String(qn).replace(/а\s*[·.*•]\s*ч/g,"ач").replace(/ампер[\s-]*час\S*/g,"ач");
+  /* «1,5–2 А·ч», «160–200 А»: единица у второго числа относится к обоим */
+  qn = qn.replace(/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)/g, (all,a,b,u)=>unitOf(u) ? a+u+" "+b+u : all);
   const re=/(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)?/g; let m;
   while((m=re.exec(qn))){
     const d=m[1].replace(".",","), u=m[2]||"";
     const n=parseFloat(m[1].replace(",","."));
     const metre = /^(м|метр|метра|метров|метре)$/.test(u);
     const kg = /^(кг|килограмм\S*|кило)$/.test(u), gr = /^(г|гр|грамм\S*)$/.test(u);
-    const d0 = metre ? d+"@м" : kg ? d+"@кг" : gr ? d+"@г" : d;
+    const pu = unitOf(u);
+    const d0 = metre ? d+"@м" : kg ? d+"@кг" : gr ? d+"@г" : pu ? d+"@"+pu : d;
     if(out.indexOf(d0)<0) out.push(d0);
     /* каталог пишет вес и так, и так: «КУВАЛДА 1,5КГ» и «КУВАЛДА 2000Г» */
     if(kg){ const g=String(Math.round(n*1000))+"@г"; if(out.indexOf(g)<0) out.push(g); }
@@ -10057,9 +10101,12 @@ function sizeScore(hay, d){
       const weight = wu==="кг" || wu==="г";
       if(!dig(b) && !(sep(b) && dig(bb)) && !dig(e) && !(sep(e) && dig(ee))){
         const dim = /^(мм|mm)/.test(wu) || b==="=" || (/^[xх]/.test(wu) && !/[a-zа-я]/.test(b));   /* «2» в «PH2X25» — не размер */
+        const wn = unitOf(wu);
         const sc = metre ? (e==="м" && ee!=="м" ? 6 : 0)
                  : unit==="рез" ? (b==="м" || b==="m" ? 8 : 0)
-                 : unit ? (wu===unit ? 6 : 0) : weight ? 2 : dim ? 6 : 5;
+                 : unit==="кг" || unit==="г" ? (wu===unit ? 6 : 0)
+                 : unit ? (wn===unit ? 6 : wn ? 0 : /[a-zа-я]/.test(b) ? 2 : 3)   /* «2 А·ч» не совпадает с «2Л», «ИСА200» без «А» — слабо */
+                 : weight ? 2 : dim ? 6 : /[a-zа-я]/.test(b) ? 2 : 5;
         if(sc>best) best = sc;
         if(best>=6 && unit!=="рез") return best;
       }
@@ -10067,6 +10114,13 @@ function sizeScore(hay, d){
     }
   }
   return best;
+}
+/* Основа слова для каталога: срезаем только окончание существительного или прилагательного.
+   Стеммер для живой речи режет и глагольные окончания — «пенал» у него «пена», а в каталоге это разные товары. */
+function catStem(w){
+  w = String(w).replace(/ё/g,"е");
+  const m = w.match(/(ами|ями|ого|его|ому|ему|ыми|ими|ов|ев|ей|ой|ий|ый|ая|яя|ое|ее|ые|ие|ую|юю|ом|ем|ам|ям|ах|ях|а|я|о|е|у|ю|ы|и|ь|й)$/);
+  return m && w.length-m[0].length>=3 ? w.slice(0, w.length-m[0].length) : w;
 }
 /* Слова запроса группами: само слово, как его пишет каталог, его сокращение, марка латиницей.
    Совпала любая форма — слово засчитано. */
@@ -10082,16 +10136,20 @@ function artGroups(qn, live){
       if(alts.indexOf(s)<0) alts.push(s); } };
     /* живой поиск берёт основу слова целиком: «провод» не должен ловить «ПРОВОЛОКУ»;
        сокращения каталога («ШЛИФ.», «П/МЕТ.») ловит правило сокращений ниже */
-    const ws = live && /[а-я]/.test(w) && rstem(w).length>=3 ? rstem(w) : "";
+    const ws = live && /[а-я]/.test(w) && catStem(w).length>=3 ? (/(ым|им)$/.test(w) && w.length>=7 ? w.slice(0,-2) : catStem(w)) : "";   /* «нитриловым» → «нитрилов» */
     /* глагол товар не называет: «открутить» не должно ловить «ОЧКИ ОТКР.» — от него берём только синонимы */
     const verb = live && w.length>=5 && /(ть|ти|чь|ться|тись|ся|сь)$/.test(w) && !artKnows(w);
     if(!verb){ if(ws) alts.push(ws); else add(w); }
     /* правило по соседям (CTX_SYN) заменяет обычные синонимы каталога: «резьба на болте» — только плашки */
     const cs = live ? ctxSyn(" "+qn+" ", ws||w) : null;
     if(cs) cs.split(" ").forEach(add);
-    else if(ART_SYN[w]) ART_SYN[w].split(" ").forEach(add);
+    else if(ART_SYN[w] && !(live && ART_SYN_LIVE[w])) ART_SYN[w].split(" ").forEach(add);
+    /* «лазерный» в каталоге — «ЛАЗЕР», «алмазный» — «АЛМАЗ» */
+    if(live && ws && /(ый|ий|ой|ая|яя|ое|ее|ые|ие|ым|им|ого|его|ую)$/.test(w)){ const b=ws.replace(/(н|ов|ев|ск)$/,"");
+      /* без последних букв — каталог сокращает («ДИНАМОМЕТРИЧ»), но не до чужого слова: «гвоздеза», не «гвозд» */
+      [b, b.slice(0, Math.max(5, b.length-3))].forEach(v=>{ if(v.length>=3 && v!==ws && alts.indexOf(v)<0) alts.push(v); }); }
     if(live){
-      const syn = cs ? "" : (ART_SYN_LIVE[w] || artSynLive(ws||w));
+      const syn = cs ? "" : (ART_SYN_LIVE[w] || artSynLive(rstem(w)));
       if(syn) syn.split(" ").forEach(add);
       ART_ABBR.forEach(r=>{ if(r[0].test(w)) add(r[1]); });
       if(BRAND_TR[w]) add(BRAND_TR[w]);
@@ -10160,9 +10218,11 @@ function artSearch(q, limit, live){
     res.push([x, rank(x,hit), hit]);
   });
   let out;
+  /* один артикул лежит в нескольких местах — одна карточка, адреса в ней (artPlaces) */
+  const uniq = r => { const seenA = new Set(); return r.filter(e=>!seenA.has(e[0].a) && seenA.add(e[0].a)).slice(0, limit||8).map(e=>e[0]); };
   if(res.length){
     res.sort((a,b)=>b[1]-a[1]);
-    out = res.slice(0, limit||8).map(x=>x[0]);
+    out = uniq(res);
     out.full = res[0][2]===groups.length;
     return out;
   }
@@ -10170,7 +10230,7 @@ function artSearch(q, limit, live){
   if(!live || groups.length<2) return out;
   /* мягкий режим: по одному слову. Берём первое слово запроса, которое называет
      что-то определённое (до 60 позиций), — «экстрактор», а не «болгарка» на полсотни строк */
-  let wide = null;
+  let wide = null, mid = null;
   const verbish = st => /(ть|ти|чь)$/.test(st) || /^(сня|сним|сверл|рез|пил|крут|креп|повес|шлиф|точ|меша)/.test(st);
   for(let gi=0; gi<groups.length; gi++){
     const g = verbish(groups[gi][0]) ? groups[gi].slice(1) : groups[gi];
@@ -10178,10 +10238,16 @@ function artSearch(q, limit, live){
     cand.forEach(x=>{ if(g.some(st=>altHit(x,st))) r.push([x, rank(x,1)]); });
     if(!r.length) continue;
     r.sort((a,b)=>b[1]-a[1]);
-    if(r.length<=60){ out = r.slice(0, limit||8).map(x=>x[0]); out.loose = true; return out; }
+    /* слово только в назначении («Д/ВСЕХ ПОВЕРХН.», «ДЛЯ МОЙКИ») — это не тот товар, ищем дальше */
+    const forOnly = e => { const n = e[0]._n.replace(/(д\/|для |по |под )[а-яa-z]+/g, " "); return !g.some(st=>altHit({_n:n, _ab:[]}, st)); };
+    if(r.every(forOnly)){ if(!mid) mid = r; continue; }
+    /* «БАЛЛОН Д/ГВОЗДЕЗАБ.» — после самих гвоздезабивных инструментов */
+    r.forEach(e=>{ if(forOnly(e)) e[1] -= 6; });
+    r.sort((a,b)=>b[1]-a[1]);
+    if(r.length<=60){ out = uniq(r); out.loose = true; return out; }
     if(!wide) wide = r;
   }
-  if(wide){ out = wide.slice(0, limit||8).map(x=>x[0]); out.loose = true; }
+  if(wide || mid){ out = uniq(wide || mid); out.loose = true; }
   return out;
 }
 
@@ -12011,24 +12077,319 @@ function typeNote(name){
   return "";
 }
 
-/* Сопутствующий товар назван словами — находим его в каталоге и даём код и адрес,
-   иначе продавцу нечего показать на кассе. */
-const CODE_CACHE={};
-function codeLine(text){
-  const key=String(text||"").toLowerCase();
-  if(key in CODE_CACHE) return CODE_CACHE[key];
-  const q=key.replace(/<[^>]+>/g," ").replace(/[«»(),:—-]/g," ").trim();
-  let hit=null;
-  if(q.length>2){
-    const r=artSearch(q,1);
-    if(r.length) hit=r[0];
-  }
-  return (CODE_CACHE[key] = hit);
+/* ---- Варианты в зале под фразу рекомендации ----
+   «Инвертор MMA 160–200 А», «Маска-хамелеон — не экономить», «Электроды под задачу, 2,5 и 3 мм».
+   Тип товара — первое существительное фразы: в варианты идут только позиции этого типа,
+   выше — те, где совпали остальные слова и размеры и которые лежат в аллее подбора.
+   Пояснение после «—» и скобки в поиск не идут. Точного совпадения не обещаем — это варианты. */
+const ADJ_END = /(ый|ий|ой|ая|яя|ое|ее|ые|ие|ым|им)$/;
+let ART_BY_A = null;
+function artPlaces(a){
+  if(!ART_BY_A){ ART_BY_A = new Map(); artList().forEach(x=>{ let l=ART_BY_A.get(x.a); if(!l) ART_BY_A.set(x.a, l=[]); l.push(x); }); }
+  return ART_BY_A.get(a) || [];
 }
-function withCode(text){
-  const x=codeLine(text);
-  if(!x) return "";
-  return `<span class="artlm" style="margin-top:6px;display:inline-block">ЛМ ${esc(x.a)}</span> <span class="artad">${esc(x.n)} · ${esc(artAddr(x))}</span>`;
+/* Признаки, которые меняют выбор: MMA — не полуавтомат, сетевой — не аккумуляторный.
+   [что сказано во фразе, что в названии позиции, сколько добавить или снять] */
+const ART_FEAT = [
+ [/(^|[^а-яa-z])(mma|мма)([^а-яa-z]|$)|электродом/, /ПОЛУАВТ/, -12],
+ [/полуавтомат|(^|[^a-z])mig([^a-z]|$)/, /ПОЛУАВТ/, 6],
+ [/сетев/, /(^|[^А-Я])АКК/, -12],
+ [/аккумулятор|(^|[^а-я])акк[^а-я]/, /(^|[^А-Я])АКК/, 6],
+ [/бесщет/, /Б\/Щ|(^|[^А-Я])БЩ/, 4],
+ [/инверторн/, /ИНВЕРТ/, 4],
+ /* баллончик 220 г или 600 мл — для горелки, сварке нужен баллон с углекислотой или аргоном */
+ [/полуавтомат|(^|[^a-z])(tig|mig)([^a-z]|$)|аргон|углекисл/, /БАЛЛОН.*(\d ?Г[^А-Я]|\d ?Г$|МЛ|С\/ГАЗ|С ГАЗОМ)|ЦАНГ/, -50],
+ [/механическ|ручн/, /(^|[^А-Я])АКК|ЭЛЕКТР|ПНЕВМ/, -12],
+ [/столяр/, /КАМЕНЩ|КИРОЧ|КРОВЕЛ|РИХТ/, -8],
+ [/^(?!.*гравер)/, /ГРАВЕР/, -50],
+ [/^(?!.*(корриг|диоптр|поверх))/, /КОРРИГ/, -6],
+ [/^(?!.*сетев).*шуруп/, /(^|[^А-Я])АКК/, 4],
+ [/^(?!.*круг)/, /Д\/ШЛИФ КРУГ/, -8],
+ [/^(?!.*пищев)/, /ПИЩЕВ/, -6],
+ [/^(?!.*маркер).*краск/, /МАРКЕР/, -50],
+ /* удлинитель без слова про оснастку — силовой, а не для бит и головок */
+ [/^(?!.*(sds|бур|бит|головк|вороток|ключ|кардан|трещотк|1\/[248]|3\/8)).*удлинител/, /SDS|БИТ|УДАР|1\/2|1\/4|3\/8/, -50],
+ /* точило — станок; «ТОЧИЛЬНЫЙ ДИСК» — круг к нему */
+ [/точил[оа]([^а-я]|$)/, /ТОЧИЛЬН\S* ДИСК/, -50],
+ [/^(?!.*(зубч|гребен))/, /^ШПАТЕЛЬ.*ЗУБ/, -8],
+ [/^(?!.*свар)/, /ГАЗОСВАР|СВАРЩ/, -8]
+];
+/* Общие типы: насадка, диск, круг, набор… — сами по себе ничего не говорят. Код даём, только если
+   совпали уточнения из фразы или позиция из той же аллеи и категории подбора. */
+const GENERIC_HEAD = /^(насадк|насадок|набор|комплект|переходник|диск|круг|щетк|фильтр|шланг|ключ|головк|полотн|пилк|лезви|сверл|бит|кейс|ящик|сумк|масл|смазк|пласти|скоб|блок|кольц|упор|накладк|губк|очистител|лист|экран)/;
+/* Характеристика, а не товар: «Мелкий зуб: 14–24 на дюйм», «Класс пыли M», «Ёмкость 1,5–2 А·ч» */
+const SPEC_HEAD = /^(резьб|зуб|класс|емкост|диаметр|длин|ширин|глубин|ход|наклон|угол|режим|мощност|энерги|момент|оборот|вес|размер|цен|модел|тип|задач|влажност|защит|внимани|главн|запас|расход|производительн|давлен|напряжен|сечени|материал|форм|сторон|маркировк|точност|луч|ресурс|скорост|привод|диапазон)[а-я]{0,4}$/;
+/* Слова, которые ничего не уточняют: «с запасом», «нужного диаметра», «строительный пылесос» */
+const REQ_SKIP = /^(строительн|обязательн|нужн|запас|хорош|отдельн|минимум|разн|нескольк|обычн|прост|любо|подходящ|качествен|нормальн|дешев|недорог|дополнени|din$)/;
+/* Свойство, которое есть у всего типа: дальномеры все лазерные */
+const REQ_INHERENT = [[/^дальномер/, /^лазер/], [/^напильник/, /^метал/], [/^заклепочник/, /^вытяжн/], [/^отверт/, /^универс/]];
+/* «Диск под материал», «Бур нужного диаметра», «Запасные ножи»: что именно — решает задача клиента,
+   без уточнений код не угадать */
+const QUAL_DEP = /(^|[^а-я])(нужн\S*|под (материал|задач|размер|основани|диаметр|резьб|тип)\S*|обязательн\S*|того же|по задаче|запасн\S*|сменн\S*|втор(ой|ая|ое|ые)|своего)([^а-я]|$)/;
+/* «под материал», «нужного», «по задаче» — решает задача, даже если у типа есть уточнение («пильные диски под материал») */
+const QUAL_DEP_STRONG = /(^|[^а-я])(нужн\S*|под (материал|задач|размер|основани|резьб|тип)\S*|того же|по задаче)([^а-я]|$)/;
+/* В названии набор: «НАБ.», «НАБОР», «3ШТ», «12ПР» */
+const ART_SET = /(^|[^А-Я])(НАБ|НАБОР|КОМПЛ)|([3-9]|\d\d+) ?(ШТ|ПР)([^А-Я]|$)/;
+/* «Набор», «комплект», «запасной» — не тип товара: тип в следующем слове («Набор буров» — буры) */
+const CONTAINER_W = /^(набор|комплект|упаковк|пачк|запас|сменн|втор|пара|пар)$|^(набор|комплект|запасн|сменн)/;
+/* «160–200 А», «1,0–1,6 мм», «400–460 л/ч»: позиция с числом внутри диапазона и той же единицей */
+function artRanges(t){
+  const out=[], re=/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)?/g; let m;
+  while((m=re.exec(t))){
+    const lo=parseFloat(m[1].replace(",",".")), hi=parseFloat(m[2].replace(",",".")), u=m[3]||"";
+    if(hi>lo) out.push([lo, hi, unitOf(u) || (/^(мм|mm|см|м)$/.test(u) ? u : "")]);
+  }
+  /* «от 900 Вт», «до 40 Вт» — открытый диапазон, только с единицей */
+  const re2=/(^|[^а-я])(от|до)\s+(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)/g;
+  while((m=re2.exec(t))){
+    const v=parseFloat(m[3].replace(",",".")), u=unitOf(m[4]);   /* «от 2,5 мм²» — сечение, не длина: только Вт, А, бар… */
+    if(u) out.push(m[2]==="от" ? [v, Infinity, u] : [0, v, u]);
+  }
+  return out;
+}
+function rangeScore(n, r){
+  const re=/(^|[^0-9.,])(\d+(?:[.,]\d+)?)\s?([a-zа-я]+)?/g; let m;
+  while((m=re.exec(n))){
+    const v=parseFloat(m[2].replace(",",".")), wu=m[3]||"";
+    if(v<r[0] || v>r[1]) continue;
+    if(r[2] && r[2]!=="мм" && r[2]!=="см" && r[2]!=="м" ? unitOf(wu)===r[2] : r[2]==="мм" ? (/^(мм|mm|[xх])/.test(wu) || /[xх]$/.test(m[1])) : !unitOf(wu)) return 5;
+  }
+  return 0;
+}
+/* ctx — о чём подбор («Пылесос класса M»): «МЕШКИ Д/ПЫЛ.» на «Мешки упаковкой» назначению не противоречат */
+function artFind(text, n, aisleHint, notRe, strictAisle, own, main, ctx){
+  const full = stripTags(String(text||"")).toLowerCase().replace(/ё/g,"е");
+  const fullCtx = full + " " + stripTags(String(ctx||"")).toLowerCase().replace(/ё/g,"е");
+  /* «Пильный диск по дереву — никогда»: это предупреждение, кода у него нет */
+  if(/(^|[^а-я])(никогда|нельзя|не берите|не ставьте|не брать)([^а-я]|$)/.test(full)) return [];
+  const core = full.replace(/\([^)]*\)/g," ").split(/\s[—–]\s|\s[—–]$|\.\s/)[0];
+  /* «Электроды ОК-46 или МР-3» — сначала фраза целиком; «Штатив или распорная стойка»,
+     «Кейс или сумка» — потом варианты по очереди */
+  const alts = [core].concat(/\s+или\s+|\s*\/\s+/.test(core) ? core.split(/\s+или\s+|\s*\/\s+/) : []);
+  /* вариант, где не совпало ни одно уточнение («тёрка» без зажимов), — запасной: вдруг следующий точнее */
+  let weak = null;
+  for(let a=0; a<alts.length; a++){
+    const parts = alts[a].split(/\s+и\s+|,\s+а\s+не\s+|\s+\+\s+/);
+    let p0 = parts[0];
+    /* «Зачистной и лепестковый круг» — у первого прилагательного тип из второй части */
+    if(parts.length>1 && p0.trim().split(/\s+/).every(w=>ADJ_END.test(w))) p0 += " " + parts[1].replace(/^(\S+(ый|ий|ой|ая|яя|ое|ее|ые|ие)\s+)+/, "");
+    const r = artFindOne(p0, full, n, aisleHint, notRe, strictAisle, own, main, fullCtx);
+    if(r.length && !r.weak) return r;
+    if(r.length && !weak) weak = r;
+  }
+  return weak || [];
+}
+function artFindOne(t, full, n, aisleHint, notRe, strictAisle, own, main, fullCtx){
+  const ws = (t.match(/[а-яa-z]+|[,;]/g)||[]);
+  /* тип — первое существительное; «Сетевой краскопульт» — второе слово; «Линейный, крест» — совет, не товар */
+  let i = 0;
+  while(i<ws.length && (ws[i].length<3 || STOP.has(ws[i]) || FILLER.has(ws[i]))) i++;
+  if(i>=ws.length) return [];
+  while(i<ws.length-1 && (ADJ_END.test(ws[i]) || CONTAINER_W.test(ws[i])) && /^[а-яa-z]{3,}/.test(ws[i+1]) && !STOP.has(ws[i+1])) i++;
+  const head = ws[i];
+  /* «Диэлектрический набор 1000 В» — после «набора» ничего: тип и есть набор */
+  const contHead = /^(набор|комплект)$/.test(head || "");
+  if(!head || head.length<3 || ADJ_END.test(head) || (CONTAINER_W.test(head) && !contHead) || SPEC_HEAD.test(head)) return [];
+  /* «Набор с приводом…» — тип не назван; «Диэлектрический набор», «Набор для дома» — назван */
+  if(contHead && !ws.slice(0,i).some(w=>ADJ_END.test(w)) && !/(^|\s)для\s/.test(t)) return [];
+  /* «Главное правило — обесточить», «Основная ошибка» — совет, а не товар */
+  if(ws.slice(0,i).some(w=>/^(главн|основн|важн)/.test(w))) return [];
+  const hg0 = artGroups(head, true)[0];
+  if(!hg0) return [];
+  /* сокращение каталога от типа («металлопрокат» → «МЕТ.») — только само сокращение, не «МЕТЧИК» */
+  const abbr = ART_ABBR.filter(r=>r[0].test(head)).map(r=>r[1]);
+  const abShort = abbr.filter(a=>a.length<4);   /* «АКК», «ШУР» — не тип: «ПЕРФ.АКК.» — перфоратор */
+  /* «отвёрток», «головок», «стамесок» — каталог пишет «ОТВЕРТ», «ГОЛОВКИ»: основа без «-ок» */
+  const hg = /(ок|ек)$/.test(head) && head.length>=7 && hg0.indexOf(head.slice(0,-2))<0 ? hg0.concat([head.slice(0,-2)]) : hg0;
+  const hprim = hg[0];
+  /* сокращение каталога — начало слова фразы, но не корень другого слова: «ШЛИФ.» ← «шлифовальный», не «шлифблок» */
+  /* таблица сокращений ART_ABBR главнее: «ПЛАСТ.» — пластик, не «пластины»; «МЕТ.» — металл, не «метчик» */
+  const abOK = (ab, st) => { const rs = ART_ABBR.filter(r=>r[1]===ab); return rs.length ? rs.some(r=>r[0].test(st)) || /^(шлифов|зачист|сварк|сварщ|отрез|торцов|перфор|аккум)/.test(st) : true; };
+  const abHit = (x, st, min) => x._ab.length && x._ab.some(ab=>ab.length>=min && st.indexOf(ab)===0 && (st.length-ab.length<=3 || ab.length>=5) && abOK(ab, st));
+  /* «проводки» ← «ПРОВОД»: уменьшительное «-к» */
+  const one = (x, st) => hasWord(x._n, st) || abHit(x, st, 1) || (st.length>=6 && /к$/.test(st) && hasWord(x._n, st.slice(0,-1)));
+  const hit = (x, st) => st.indexOf("+")<0 ? one(x, st) : st.split("+").every(p=>one(x, p));
+  /* тип совпал по самому слову или по сокращению от четырёх букв: «СЕТ.» (сетевой) — не «сетка» */
+  /* и не начало другого слова: «гвозди» — не «ГВОЗДОДЕР» */
+  const headHit = (hay, x, st) => st.indexOf("+")>=0 ? hasWord(hay, st.split("+")[0])
+    : (st===hprim ? (st.length<=4 ? hasWordTail(hay, st) : hasWord(hay, st) && hay.length-st.length<=3)
+       : abShort.indexOf(st)>=0 ? false : abbr.indexOf(st)>=0 ? hay===st : hasWord(hay, st))
+      || (abHit(x, st, 4) && x._ab.some(ab=>st.indexOf(ab)===0 && hasWord(hay, ab)));
+  /* первое слово названия — служебное: сокращение («СВАР.», «НАБ.»), набор, прилагательное или короткое */
+  const lead = (x, w) => !w || w.length<=2 || x._ab.indexOf(w)>=0 || CONTAINER_W.test(w) || ADJ_END.test(w);   /* «ДШМ», «ЛОМ» — тоже тип */
+  const key = g => g.join("|");
+  /* уточнения: прилагательные перед типом («грязевая фреза», «пенная насадка») и слова после него
+     («шланг высокого давления»); «набор», «запасной» — не уточнения */
+  const cont = artGroups(ws.slice(0,i).filter(w=>CONTAINER_W.test(w)).join(" "), true).map(key);
+  /* уточнения — из первой части до запятой: «Маска-хамелеон DIN 9–13, время срабатывания…» — дальше характеристики */
+  const clause = t.split(/,\s/)[0];
+  const others = artGroups(clause, true).filter(g=>key(g)!==key(hg0));
+  /* после «с»: «пеногенератор с бачком», «перчатки с нитриловым покрытием» — свойство, в названии его
+     может не быть; совпало — позиция выше, не совпало — не выкидываем */
+  const soft = artGroups((clause.match(/(^|\s)(с|со)\s+(.*)$/)||["","","",""])[3], true).map(key);
+  const req = others.filter(g=>cont.indexOf(key(g))<0 && !CONTAINER_W.test(g[0]) && !SPEC_HEAD.test(g[0]) && !REQ_SKIP.test(g[0])
+    && !REQ_INHERENT.some(r=>r[0].test(head) && r[1].test(g[0])) && soft.indexOf(key(g))<0);
+  if(!main && !artSizes(t).length && (QUAL_DEP_STRONG.test(full) || (!req.length && QUAL_DEP.test(full)))) return [];
+  const wantSet = /(^|[^а-я])(набор|комплект)/.test(ws.slice(0,i).join(" "));
+  t = t.replace(/\d+\/\d{3,}/g, " ");      /* «1/25000 с» — время срабатывания, не размер */
+  /* «Набор буров 6/8/10/12» — цифры о составе набора, по ним не отбираем */
+  const sizes = wantSet ? [] : artSizes(t), ranges = wantSet ? [] : artRanges(t);
+  const idx = artIndex(), all = artList(), seen = new Set(), cand = [];
+  hg.forEach(st=>{ (idx.get(st.split("+")[0].slice(0,3))||[]).forEach(k=>{ if(!seen.has(k)){ seen.add(k); cand.push(all[k]); } }); });
+  const best = new Map();
+  cand.forEach(x=>{
+    if(!hg.some(st=>hit(x,st)) || (notRe && notRe.test(x.n))) return;
+    const words = x._n.split(/[^а-яa-z0-9]+/).filter(Boolean);
+    /* «НАСАДКА-ПЕНОГЕНЕРАТОР»: тип может стоять и во второй половине составного слова */
+    const w0 = (x._n.match(/^[а-яa-z0-9-]+/)||[""])[0].split("-");
+    const pos = hg.some(st=>headHit(words[0]||"", x, st)) ? 0 : hg.some(st=>w0.some(w=>headHit(w, x, st))) ? 0.5
+              : (lead(x, words[0]) && hg.some(st=>headHit(words[1]||"", x, st))) ? 1 : 2;   /* «ЧЕРНИТЕЛЬ ШИН» — не шина */
+    const oth = others.filter(g=>g.some(st=>hit(x,st))).length;
+    const othReq = req.filter(g=>g.some(st=>hit(x,st))).length;
+    if(pos===2 && oth<2) return;                        /* «…В КЕЙСЕ», «ШАРОШКА ЦИЛИНДР» — не этот товар */
+    let sz = 0; sizes.forEach(d=>{ sz += sizeScore(x._n, d); });
+    ranges.forEach(r=>{ const rs = rangeScore(x._n, r); if(rs) sz = Math.max(sz, 5) + (sz>=5 ? 1 : 0); });
+    /* уточнений и размеров во фразе два и больше, а у позиции ни одного — это не то */
+    /* «Перчатки термостойкие», «Очки для лазера»: уточнение не нашлось — другой тип не подсовываем */
+    const isSet = wantSet && ART_SET.test(x.n);
+    if(!main && req.length && !othReq && sz<5 && !isSet) return;
+    const sameAisle = aisleHint && (x.al===aisleHint || x.hint===aisleHint);
+    const mine = sameAisle || (own && own.has(x.a));
+    const full2 = req.length>0 && othReq===req.length, typeOK = pos<=1;
+    /* «ведро с сепаратором»: свойство после «с» не нашлось — только своя позиция подбора */
+    if(!main && soft.length && !others.some(g=>soft.indexOf(key(g))>=0 && g.some(st=>hit(x,st))) && !mine) return;
+    /* рекомендация подбора: его аллея, либо все уточнения совпали, либо тип и размер без уточнений */
+    if(strictAisle && !mine && !full2 && !(typeOK && sz>=5 && !req.length)) return;
+    /* общий тип («фильтр», «насадка», «бур»): все уточнения, или часть из них у позиции своей аллеи,
+       или размер; «набор буров» — наборы */
+    if((GENERIC_HEAD.test(head) || (!main && /^(нож|ножи|ножей|бур|бура|буры|буров)$/.test(head)))
+       && !(req.length ? full2 || (othReq>0 && mine && !contHead) : !contHead && (sz>=5 || (isSet && mine) || oth>0))) return;
+    let s = (pos===0 ? 10 : pos===0.5 ? 8 : pos===1 ? 7 : 4) + oth*4 + sz + (sameAisle ? 3 : 0) + (x.top ? 1 : 0) + (own && own.has(x.a) ? 6 : 0);
+    /* уровень доверия: тип и все уточнения > все уточнения > тип; остальное не показываем */
+    const tier = full2 && typeOK ? 3 : full2 ? 2 : typeOK ? 1 : 0;
+    if(!tier) return;
+    /* признак против фразы на −12 и больше — позицию не показываем: MMA — не полуавтомат */
+    let veto = false;
+    ART_FEAT.forEach(f=>{ if(f[0].test(full) && f[1].test(x.n.toUpperCase())){ s+=f[2]; if(f[2]<=-12) veto = true; } });
+    if(veto || s<=0) return;
+    /* «БАЛЛОН Д/ГВОЗДЕЗАБ.» на «Баллон, редуктор, газ»: назначение в названии, а во фразе о нём ни слова */
+    /* назначение — одно-два слова после «Д/», «ДЛЯ», «ПО»; совпало со словом фразы (и его синонимом) — не спорит */
+    const pm = x.n.toUpperCase().match(/(Д\/|ДЛЯ |ПО )([А-Я]{3,})(?:[ .]+([А-Я]{3,}))?/);
+    const pOK = w => !!w && (fullCtx.indexOf(w.toLowerCase().slice(0,4))>=0
+      || others.concat([hg]).some(g=>g.some(st=>w.toLowerCase().indexOf(st.split("+")[0].slice(0,4))===0)));
+    if(pm && !pOK(pm[2]) && !pOK(pm[3])){
+      if((!main && !othReq) || /(^|\s)для\s/.test(t)) return;
+      s -= 5;                                   /* «ЩЕТКА … Д/ДРЕЛИ» на «щётку по металлу» — после ручной */
+    }
+    /* «Аккумуляторная сабельная пила» — сетевые в основной товар не идут */
+    if(main && /аккумулятор|(^|[^а-я])акк([^а-я]|$)/.test(t) && !/(^|[^А-Я])АКК/.test(x.n.toUpperCase())) return;
+    const b = best.get(x.a);
+    if(!b || b.s<s) best.set(x.a, {x, s, oth, othReq, sz, tier, set: ART_SET.test(x.n)});
+  });
+  let res = Array.from(best.values());
+  /* «Набор буров» — сначала наборы, одиночный бур не подсовываем, если набор есть */
+  if(wantSet && res.some(v=>v.set)) res = res.filter(v=>v.set);
+  /* совет — только лучший уровень; основной товар — варианты, лучшие первыми */
+  const mt = res.reduce((m,v)=>Math.max(m,v.tier),0);
+  if(!main) res = res.filter(v=>v.tier===mt);
+  else if(mt>=2) res = res.filter(v=>v.tier>=2);     /* «3D лазерный уровень» — сначала лазерные, потом цифры */
+  /* размер во фразе: есть позиции с ним — остальные не берём */
+  const ms = res.reduce((m,v)=>Math.max(m,v.sz),0);
+  if(ms>=5) res = res.filter(v=>v.sz>=(main ? 2 : 5));
+  else if(ms>=2) res = res.filter(v=>v.sz>=2);      /* «круг 6 мм» ← «125Х6Х22» */
+  /* размер назван точно («нож 9 мм»), а такого нет — другой размер не подсовываем */
+  else if(!main && sizes.length && !/(^|[^а-я])(от|до)\s+\d|\d\s*[–-]\s*\d/.test(t)) res = [];
+  /* больше совпавших уточнений — точнее: «SDS-plus» отсекает SDS-max */
+  const mo = res.reduce((m,v)=>Math.max(m,v.oth),0);
+  if(mo) res = res.filter(v=>v.oth >= (main ? Math.max(1, mo-1) : mo));
+  res = res.sort((a,b)=>b.tier-a.tier || b.s-a.s).slice(0, n||3);
+  const out = res.map(v=>v.x);
+  out.weak = req.length>0 && !res.some(v=>v.othReq>0) && !res.some(v=>v.sz>=5);
+  /* размер назван, а в зале его нет — показываем ближайшее, но не «под ответы» */
+  out.loose = ((sizes.length>0 || ranges.length>0) && !res.some(v=>v.sz>=2)) || (main && out.weak);
+  out.tiers = new Map(res.map(v=>[v.x.a, v.tier]));
+  return out;
+}
+
+/* ---- Коды под строки подбора ---- */
+/* Свои позиции подбора: что находят его запросы CAT_Q и CAT_MAIN. Им доверяем больше. */
+const FLOW_OWN = new Map();
+function flowOwn(flowId){
+  let own = FLOW_OWN.get(flowId);
+  if(own) return own;
+  own = new Set();
+  (CAT_Q[flowId]||[]).forEach(q=>artSearch(q, 60).forEach(x=>own.add(x.a)));
+  const mc = CAT_MAIN[flowId];
+  if(mc) artSearch(mc.q, 60).forEach(x=>own.add(x.a));
+  FLOW_OWN.set(flowId, own);
+  return own;
+}
+const artType = x => (x._n.match(/[а-яa-z]+/)||[""])[0];
+/* два первых слова: «ДРЕЛЬ АКК.» и «ДРЕЛЬ-ШУР.» — разный товар */
+const artType2 = x => (x._n.match(/[а-яa-z]+/g)||[]).slice(0,2).join(" ");
+/* Аллея подбора, если товар наш: у чужого отдела (CAT_Q пустой) аллеи нет */
+function flowAisle(flowId){
+  const f = FLOWS[flowId];
+  if(!f || (CAT_Q[flowId] && !CAT_Q[flowId].length)) return "";
+  return aisle(f.zone) || "";
+}
+/* Варианты под строку совета или «взять вместе». strict — совет: только своя аллея,
+   все уточнения или тип с размером. Тип совпал с основным товаром — действует и его «не то» (CAT_MAIN.not). */
+const VAR_CACHE = {};
+function varsFor(flowId, text, n, strict){
+  const al = flowAisle(flowId);
+  const key = [flowId, al, n, strict?1:0, text].join("|");
+  if(key in VAR_CACHE) return VAR_CACHE[key];
+  const own = flowOwn(flowId), mc = CAT_MAIN[flowId], notRe = mc && mc.not, f = FLOWS[flowId];
+  const ctx = f ? f.title + " " + f.out(S.ans).head : "";
+  let v = artFind(text, n, al, null, strict, own, false, ctx);
+  if(notRe && v.some(x=>notRe.test(x.n))){
+    const m = mainFor(flowId);
+    if(m.list.length && v.some(x=>artType(x)===artType(m.list[0]))) v = artFind(text, n, al, notRe, strict, own, false, ctx);
+  }
+  return (VAR_CACHE[key] = v);
+}
+/* Основной товар подбора. Строка-заголовок («Инвертор MMA 160–200 А») или первый совет,
+   если он уточняет тот же товар («Столярный молоток 200–300 г») или заголовок — задача, а не товар
+   («Шлифовка стен» → «Ручная тёрка или шлифблок»). other — другие модели того же товара без размера. */
+const TASK_HEAD = /^(шлифовк|покраск|резк|распил|сверлени|заточк|пайк|сварк|подключени|крепеж|комплект|набор|сиз|разбор|захватн)/;
+const MAIN_CACHE = {};
+function mainFor(flowId){
+  const f = FLOWS[flowId], al = flowAisle(flowId);
+  const key = flowId+"|"+al+"|"+S.ans.join(",");
+  if(MAIN_CACHE[key]) return MAIN_CACHE[key];
+  const res = {list:[], other:[]};
+  if(!f || !al) return (MAIN_CACHE[key] = res);
+  const r = f.out(S.ans), own = flowOwn(flowId), mc = CAT_MAIN[flowId], notRe = mc && mc.not;
+  /* «не то» подбора (CAT_MAIN.not) не действует, если ответ сам это называет: «аккумуляторная» при not:/АКК/ */
+  const notFor = t => {
+    if(!notRe) return null;
+    const T = stripTags(t).toUpperCase().replace(/Ё/g,"Е");
+    const keep = notRe.source.split("|").filter(a=>{ try{ return !new RegExp(a, "i").test(T); }catch(e){ return true; } });
+    return keep.length ? new RegExp(keep.join("|"), notRe.flags) : null;
+  };
+  const find = (t, n) => artFind(t, n, al, notFor(t), false, own, true);
+  const H = find(r.head, 3);
+  const p0 = r.picks && r.picks[0] ? r.picks[0][0] : "";
+  const P = p0 ? find(p0, 3) : [];
+  const task = TASK_HEAD.test(stripTags(r.head).toLowerCase().replace(/ё/g,"е"));
+  /* совет берём, когда заголовок — задача, или совет уточняет тот же товар цифрой: «молоток» → «молоток 200–300 г» */
+  const hasNum = t => /\d/.test(stripTags(t));
+  const useP = P.length && (!H.length || task || (artType(P[0])===artType(H[0]) && hasNum(p0) && !hasNum(r.head)));
+  const L = useP ? P : H;
+  res.list = L.slice();
+  res.loose = !!L.loose;
+  if(L.length){
+    /* без цифр: «Инвертор MMA», «Генератор» — другие модели, признаки фразы (MMA, сетевой) остаются */
+    const bare = stripTags(useP ? p0 : r.head).replace(/\d+(?:[.,]\d+)?(?:\s*[–-]\s*\d+(?:[.,]\d+)?)?\s*(?:[a-zа-я]{1,3}(?:\/[a-zа-я]{1,3})?(?![a-zа-я]))?/gi, " ");
+    const t0 = artType2(L[0]), top = L.tiers.get(L[0].a);
+    const O = find(bare, 6);
+    res.other = O.filter(x=>artType2(x)===t0 && O.tiers.get(x.a)>=top && !L.some(y=>y.a===x.a));
+  }
+  return (MAIN_CACHE[key] = res);
+}
+function varLines(list){
+  return list.map(x=>`<div class="var"><span class="lm">ЛМ ${esc(x.a)}</span><span class="vn">${esc(x.n)}</span><span class="vad">${esc(artAddr(x))}</span></div>`).join("");
 }
 
 /* Позиции в списке дали одинаковое объяснение — значит, различие в другом слове.
@@ -12320,7 +12681,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "64";
+const APP_VERSION = "65";
 const APP_DATE = "04.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -13689,6 +14050,8 @@ const FILLER = new Set([...[...STOP].filter(w=>!ACTION_WORDS.has(w)),
  "добрый","день","утро","вечер","ночи","слушайте","послушайте","извините","простите",
  "который","которая","которое","которые","чтобы","чтоб","если","когда","потом","затем",
  "очень","самый","самая","самое","совсем","просто","вообще","примерно","около","типа","вроде",
+ /* «все электроды с рутилом»: «все» ловило «МАРКЕР … Д/ВСЕХ ПОВЕРХН.» */
+ "все","всё","всех","весь","вся","всю","всем","всеми",
  "меня","него","них","один","одна","одно","два","две","пара","парочка","немного","чуть",
  "говорит","говорят","сказал","сказала","сказали","спрашивает","спросил","спросила","просит",
  "интересуется","подскажи","скажи","покажи","нужен","нужна","нужно","нужны","надо","мне","ему","ей",
@@ -14256,14 +14619,19 @@ function resultsHTML(){
 
   const artHTML = () => !arts.length ? "" :
     `<div class="eyebrow">${arts.loose ? "Товар в зале · по главному слову" : "Товар в зале · точный адрес"}</div>`
-    + arts.map(x=>`<div class="artc${x.top?" top":""}">
+    + arts.map(x=>{
+      /* тот же артикул ещё в других местах зала — адреса в этой же карточке, а не копии карточки */
+      const ad0 = artAddr(x);
+      const more = artPlaces(x.a).map(artAddr).filter((ad,i,a)=>ad!==ad0 && a.indexOf(ad)===i);
+      return `<div class="artc${x.top?" top":""}">
       <div class="artn">${esc(x.n)}</div>
       <div class="artrow">
         <span class="artlm">ЛМ ${esc(x.a)}</span>
-        <span class="artad">${esc(artAddr(x))}</span>
+        <span class="artad">${esc(ad0)}</span>
       </div>
+      ${more.length ? `<div class="artmore">Ещё ${more.length===1?"место":"места"}: ${more.map(esc).join("; ")}</div>` : ""}
       ${x.top?'<div class="arttop">ТОП — держим в наличии</div>':""}
-    </div>`).join("");
+    </div>`; }).join("");
   const flowHTML = () => {
     let x = "";
     if(sl.length) x += `<div class="eyebrow">Клиент сказал так — значит нужен${sl.length>1?" (уточните, что именно)":""}</div>`
@@ -14439,20 +14807,27 @@ function viewResult(){
   let fromCat = [];
   catQ.forEach(qq=>{ artSearch(qq, 10).forEach(x=>{ if(!fromCat.some(y=>y.a===x.a)) fromCat.push(x); }); });
   fromCat = fromCat.sort((a,b)=>(b.top?1:0)-(a.top?1:0)).slice(0,6);
+  /* чужой отдел (аллея — название отдела): наши артикулы по его словам — случайные совпадения */
+  if(!/^\d/.test(aisle(f.zone)||"0") && !mainFor(S.flow).list.length) fromCat = [];
 
   const mainCfg = CAT_MAIN[S.flow];
   let pool = [];
   if(mainCfg) pool = artSearch(mainCfg.q, 60).filter(x=>!mainCfg.not || !mainCfg.not.test(x.n));
   if(pool.length<2) pool = fromCat;
-  const pair = mainCfg ? twoOptions(S.flow, pool) : null;
-  const poolWhy = pool.length>=2 ? pool : fromCat;
+  /* Основной товар под ответы — первым: инвертор, а не электроды и наконечники.
+     Расходка и допы — в «Что предложить» и «Взять вместе», каждая со своим кодом. */
+  const main = mainFor(S.flow);
+  const pair = !main.list.length && mainCfg ? twoOptions(S.flow, pool) : null;
+  const poolWhy = main.list.length ? main.list.concat(main.other, pool) : pool.length>=2 ? pool : fromCat;
 
   /* если пара собралась — добираем из того же пула, а не из общей выдачи */
   const extraSrc = pair ? pool : fromCat;
-  const showList = (pair ? [pair.a, pair.b] : [])
-    .concat(extraSrc.filter(x=>!pair || (x.a!==pair.a.a && x.a!==pair.b.a)))
-    .filter((x,i,a)=>a.findIndex(y=>y.n.toLowerCase()===x.n.toLowerCase())===i)
+  const showList = (main.list.length ? main.list.concat(main.other)
+      : (pair ? [pair.a, pair.b] : []).concat(extraSrc.filter(x=>!pair || (x.a!==pair.a.a && x.a!==pair.b.a))))
+    .filter((x,i,a)=>a.findIndex(y=>y.a===x.a || y.n.toLowerCase()===x.n.toLowerCase())===i)
     .slice(0,4);
+  const tagOf = (x,i) => main.list.length ? (main.list.indexOf(x)>=0 ? (i===0 ? (main.loose ? "Ближе всего к ответам" : "Под ответы подбора") : "") : "Другая модель")
+    : pair && i<2 ? (i===0 ? "Попроще" : "С запасом") : "";
 
   let h = `<button class="back" id="back">← Изменить ответы</button>
   <div class="view">
@@ -14465,12 +14840,13 @@ function viewResult(){
   /* ---------- 1. ТОВАРЫ В ЗАЛЕ ---------- */
   h += `<div class="block pick"><h3>Что взять — товары в зале</h3>
     ${showList.length ? showList.map((x,i)=>`<div class="artc${x.top?" top":""}">
-        ${pair && i<2 ? `<div class="o2t">${i===0?"Попроще":"С запасом"}</div>` : ""}
+        ${tagOf(x,i) ? `<div class="o2t">${tagOf(x,i)}</div>` : ""}
         <div class="artn">${esc(x.n)}</div>
         <div class="artrow">
           <span class="artlm">ЛМ ${esc(x.a)}</span>
           <span class="artad">${esc(artAddr(x))}</span>
         </div>
+        ${(more=>more.length ? `<div class="artmore">Ещё ${more.length===1?"место":"места"}: ${more.map(esc).join("; ")}</div>` : "")(artPlaces(x.a).map(artAddr).filter((ad,i,a)=>ad!==artAddr(x) && a.indexOf(ad)===i))}
         <div class="artwhy">${itemWhy(S.flow, x, poolWhy)}</div>
       </div>`).join("")
     : `<div class="note">${(CAT_Q[S.flow]&&!CAT_Q[S.flow].length)
@@ -14504,7 +14880,7 @@ function viewResult(){
   h += `<div class="must"><h3>Назвать вслух — без этого вернётся</h3>
     ${m3.map(x=>`<div class="m ${inKit(x[0])?"on":""}" data-add="${esc(x[0])}">
       <div class="mn">${esc(x[0])}</div><div class="mw">${x[1]}</div>
-      ${withCode(x[0])}</div>`).join("")}</div>`;
+      ${varLines(varsFor(S.flow, x[0], 1, false))}</div>`).join("")}</div>`;
 
   /* ---------- 3. КНОПКИ ---------- */
   h += `<div class="btnrow" style="margin-top:10px">
@@ -14534,7 +14910,12 @@ function viewResult(){
   /* Один блок «что и почему»: рекомендация и разбор характеристик вместе.
      Раньше это были два соседних блока об одном и том же. */
   h += block("pick","Что предложить и почему",
-    r.picks.map(p=>`<div class="pickrow"><div class="pn">${p[0]}</div><div class="pw">${p[1]}</div></div>`).join("")
+    r.picks.map(p=>{
+      /* под советом — что из него есть в зале; точного совпадения не обещаем, поэтому «варианты» */
+      const v = varsFor(S.flow, p[0], 2, true);
+      return `<div class="pickrow"><div class="pn">${p[0]}</div><div class="pw">${p[1]}</div>
+        ${v.length ? `<div class="vlab">${v.length>1 ? "Варианты в зале" : "В зале"}</div>${varLines(v)}` : ""}</div>`;
+    }).join("")
     + `<div class="eyebrow" style="margin-top:12px">На что смотреть в характеристиках</div>
        <ul class="tight">${r.params.map(p=>`<li><b>${p[0]}</b> — ${p[1]}</li>`).join("")}</ul>`);
 
@@ -14546,11 +14927,19 @@ function viewResult(){
   (r.up||[]).forEach(x=>together.push([x,""]));
   missFor(f.zone).forEach(x=>together.push([x,"часто забывают"]));
   const seenT=new Set();
-  const uniqT=together.filter(x=>{ const k=x[0].toLowerCase(); if(seenT.has(k)) return false; seenT.add(k); return true; });
-  h += block("","Взять вместе с этим — отметьте, что берёт",
+  /* СИЗ, допы и «часто забывают» повторяют «Назвать вслух» и расходку: маска, краги, электроды —
+     одна строка на товар, по первому слову */
+  const firstW = t => (String(t).toLowerCase().replace(/ё/g,"е").match(/[а-яa-z]+/)||[""])[0];
+  const seenW = new Set(m3.map(x=>firstW(x[0])).concat((r.addons||[]).map(firstW)));
+  const nAdd = (r.addons||[]).length;
+  const uniqT=together.filter((x,i)=>{ const k=x[0].toLowerCase(); if(seenT.has(k)) return false; seenT.add(k);
+    if(i<nAdd) return true;
+    const w=firstW(x[0]); if(seenW.has(w)) return false; seenW.add(w); return true; });
+  /* Список с отметками: тап — в набор клиента. Под строкой — код, если в каталоге есть именно это. */
+  h += block("tog","Взять вместе с этим — отметьте, что берёт",
     uniqT.map(x=>`<div class="m ${inKit(x[0])?"on":""}" data-add="${esc(x[0])}">
-      <div class="mn">${esc(x[0])}${x[1]?` <span class="artad">· ${esc(x[1])}</span>`:""}</div>
-      ${withCode(x[0])}</div>`).join(""));
+      <div class="mn">${esc(x[0])}${x[1]?`<span class="mt${x[1]==="СИЗ"?" siz":" miss"}">${esc(x[1])}</span>`:""}</div>
+      ${varLines(varsFor(S.flow, x[0], 1, false))}</div>`).join(""));
 
   h += block("warn","Частые ошибки клиентов",
     `<ul class="tight">${r.errors.map(x=>`<li>${x}</li>`).join("")}</ul>`
