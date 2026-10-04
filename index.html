@@ -283,6 +283,7 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .qa{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);padding:12px;margin-bottom:7px;border-radius:2px}
 .qa .qq{font-weight:700;font-size:15px}
 .qa .qan{font-size:14.5px;color:var(--ink-2);margin-top:5px}
+.qa .qsrc{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:6px;letter-spacing:.05em}
 .shelfnote{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
 
 .map2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
@@ -315,6 +316,14 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .kb{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);padding:13px;margin-bottom:8px;border-radius:2px}
 .kb .kbq{font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.02em;line-height:1.15}
 .kb .kba{font-size:14.5px;line-height:1.5;margin-top:7px;color:var(--ink)}
+.kb .kbsrc{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+details.kb.more{border-left-color:var(--ink-3)}
+details.kb.more summary{list-style:none;cursor:pointer}
+details.kb.more summary::-webkit-details-marker{display:none}
+details.kb.more .kbmore{font-size:14px;line-height:1.45;color:var(--ink-2);margin-top:6px}
+details.kb.more[open] .kbmore{display:none}
+details.kb.more summary::after{content:"Подробнее ▾";display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:8px;letter-spacing:.06em;text-transform:uppercase}
+details.kb.more[open] summary::after{content:"Свернуть ▴"}
 .kb .kbp{font-family:var(--mono);font-size:11px;color:var(--tape-dark);margin-top:8px;letter-spacing:.05em;
   background:var(--concrete);display:inline-block;padding:4px 7px;border-radius:2px}
 
@@ -4040,14 +4049,25 @@ const SLANG = {
  "автокомпрессор":"avto","пена для мойки":"avto","губка":"avto",
  "подойдет ли":"sovmest","встанет":"sovmest","совместимость":"sovmest"
 };
+/* Ищем слово целиком (по основе), а не кусок строки: иначе «сломалась» находила «лом»,
+   и мойка уезжала в молотки. Из нескольких слов берём то, что сказано раньше. */
+let SLANG_IX = null;
 function slangHit(q){
-  const s=q.trim().toLowerCase();
-  let v = SLANG[s];
-  if(v===undefined){
-    const k=Object.keys(SLANG).find(w=>s.includes(w));
-    v = k?SLANG[k]:null;
-  }
-  if(!v) return [];
+  const qn = " "+String(q||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/g," ").trim()+" ";
+  if(!SLANG_IX) SLANG_IX = Object.keys(SLANG).map(k=>{
+    const kn = k.toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/g," ").trim();
+    return {k:k, kn:kn, st: kn.indexOf(" ")<0 ? rstem(kn) : null};
+  });
+  const ws = qn.trim().split(" "), sts = ws.map(rstem);
+  let pos = 1e9, key = null;
+  SLANG_IX.forEach(x=>{
+    let p = -1;
+    if(x.st===null) p = qn.indexOf(" "+x.kn+" ");
+    else { const j = sts.indexOf(x.st); if(j>=0) p = qn.indexOf(" "+ws[j]+" "); }
+    if(p>=0 && p<pos){ pos = p; key = x.k; }
+  });
+  if(!key) return [];
+  const v = SLANG[key];
   return (Array.isArray(v)?v:[v]).filter(id=>FLOWS[id]);
 }
 
@@ -9969,10 +9989,48 @@ const ART_SYN = {
  "резьба":"переходник","переходники":"переходник",
  "смазка":"смазка","вэдэшка":"смазка проникающ wd"
 };
+/* Только для живого поиска: подборы и коды сопутствующих ищут по-старому, строго */
+const ART_SYN_LIVE = {
+ "шуруповерт":"дрель+акк дрель+шур","шурик":"дрель+акк дрель+шур",
+ "провод":"кабел","выкрутить":"экстрак","вывернуть":"экстрак","сорвал":"экстрак","слизал":"экстрак",
+ "керхер":"мойка","кархер":"мойка","торцовку":"пила торц","торцовки":"пила торц","циркулярку":"пила диск",
+ /* клиент говорит «диск», каталог пишет «КРУГ ОТР.» — и наоборот */
+ "диск":"круг","диски":"круг","круг":"диск","круги":"диск",
+ "нарезать":"метчик плашка","резьбу":"метчик плашка","метчики":"метчик","плашки":"плашка",
+ "сварочник":"свар","сварочный":"свар","полуавтомат":"полуавт","инвертор":"инверт",
+ "шлифмашина":"шлиф","шлифмашинка":"шлиф","шлифовальная":"шлиф","шлифовальную":"шлиф",
+ "точило":"точило заточн","наждак":"точило заточн бумаж","сверла":"сверло","бита":"бита","биты":"бита",
+ "миксер":"миксер"
+};
+/* Как каталог сокращает: «П/МЕТ.», «ПО БЕТ», «Д/ДЕР.» */
+const ART_ABBR = [
+ [/^метал/,"мет"],[/^бетон/,"бет"],[/^дерев/,"дер"],[/^нерж/,"нерж"],[/^кам[ен]/,"кам"],
+ [/^керам/,"керам"],[/^алюм/,"алюм"],[/^универс/,"унив"],[/^плит/,"плит"],[/^кирпич/,"кирп"],
+ [/^стекл/,"стекл"],[/^гипсокарт/,"гкл"],[/^пластик|^пластмас/,"пласт"],[/^аккумулят/,"акк"],
+ [/^шуруповерт/,"шур"],[/^перфоратор/,"перф"],[/^отрезн/,"отр"],[/^зачистн/,"зачист"],
+ [/^лепестк/,"лепест"],[/^торц/,"торц"],[/^сабельн/,"саб"],[/^циркулярн/,"цирк"],[/^лобзик/,"лобз"],
+ [/^свар/,"свар"],[/^шлифовал|^шлифмашин/,"шлиф"],[/^ударн/,"удар"],[/^диэлектр/,"диэлектр"],
+ [/^комбинир/,"комбинир"],[/^строит/,"строит"],[/^гидравл/,"гидравл"],[/^пневмат/,"пневм"]
+];
+/* Единицы после числа сами по себе не ищем: «2 метра» — это размер, а не слово */
+const ART_UNIT = /^(м|метр|метра|метров|метре|см|сантиметр\S*|мм|миллиметр\S*|вольт\S*|в|вт|ватт\S*|ампер\S*|ач|а|литр\S*|л|кг|килограмм\S*|бар|дж|джоул\S*|нм|шт|штук\S*|зуб\S*|т|тонн\S*)$/;
 function artExpand(q){
   const words=q.toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9.,]+/).filter(Boolean);
   const out=words.slice();
   words.forEach(w=>{ if(ART_SYN[w]) out.push.apply(out, ART_SYN[w].split(" ")); });
+  return out;
+}
+/* Размеры из запроса. «2 метра» ищем и как 2, и как 2000 мм; «60 см» — как 600 мм. */
+function artSizes(qn){
+  const out=[];
+  const re=/(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)?/g; let m;
+  while((m=re.exec(qn))){
+    const d=m[1].replace(".",","), u=m[2]||"";
+    if(out.indexOf(d)<0) out.push(d);
+    const n=parseFloat(m[1].replace(",","."));
+    if(/^(м|метр|метра|метров|метре)$/.test(u) && n<=10){ const mm=String(Math.round(n*1000)); if(out.indexOf(mm)<0) out.push(mm); }
+    if(/^(см|сантиметр\S*)$/.test(u)){ const mm=String(Math.round(n*10)); if(out.indexOf(mm)<0) out.push(mm); }
+  }
   return out;
 }
 
@@ -9989,47 +10047,128 @@ function hasWord(hay, st){
   if(!re){ re = WB[st] = new RegExp("(^|[^а-яa-z0-9])"+st.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")); }
   return re.test(hay);
 }
-function artSearch(q, limit){
+/* Число в названии как отдельный размер: «5» есть в «5МX18ММ», но нет в «50М» и в «12,5ММ».
+   Точка после сокращения («АЛМ.230Х») — не десятичная, «230» там есть. */
+function hasSize(hay, d){
+  const forms = d.indexOf(",")>=0 ? [d, d.replace(",",".")] : [d];
+  const dig = c => c>="0" && c<="9", sep = c => c==="." || c===",";
+  for(let f=0; f<forms.length; f++){
+    const x = forms[f];
+    let i = hay.indexOf(x);
+    while(i>=0){
+      const b = hay.charAt(i-1), bb = hay.charAt(i-2), e = hay.charAt(i+x.length), ee = hay.charAt(i+x.length+1);
+      if(!dig(b) && !(sep(b) && dig(bb)) && !dig(e) && !(sep(e) && dig(ee))) return true;
+      i = hay.indexOf(x, i+1);
+    }
+  }
+  return false;
+}
+/* Слова запроса группами: само слово, как его пишет каталог, его сокращение, марка латиницей.
+   Совпала любая форма — слово засчитано. */
+function artGroups(qn, live){
+  const toks = qn.split(/[^a-zа-я0-9.,]+/).filter(Boolean);
+  const groups=[];
+  toks.forEach((w,i)=>{
+    if(w.length<3 || /^\d/.test(w) || STOP.has(w)) return;
+    if(live && (FILLER.has(w) || (ART_UNIT.test(w) && i>0 && /\d$/.test(toks[i-1])))) return;
+    const alts=[];
+    const add=x=>{ if(x && x.length>=3 && !STOP.has(x)){
+      const s = x.indexOf("+")>=0 ? x.split("+").map(artStem).join("+") : artStem(x);
+      if(alts.indexOf(s)<0) alts.push(s); } };
+    /* живой поиск берёт основу слова целиком: «провод» не должен ловить «ПРОВОЛОКУ»;
+       сокращения каталога («ШЛИФ.», «П/МЕТ.») ловит правило сокращений ниже */
+    const ws = live && /[а-я]/.test(w) && rstem(w).length>=3 ? rstem(w) : "";
+    if(ws) alts.push(ws); else add(w);
+    if(ART_SYN[w]) ART_SYN[w].split(" ").forEach(add);
+    if(live){
+      const syn = ART_SYN_LIVE[w] || artSynLive(ws||w);
+      if(syn) syn.split(" ").forEach(add);
+      ART_ABBR.forEach(r=>{ if(r[0].test(w)) add(r[1]); });
+      if(BRAND_TR[w]) add(BRAND_TR[w]);
+    }
+    if(!groups.some(g=>g.join("|")===alts.join("|"))) groups.push(alts);
+  });
+  if(live) return groups;
+  /* строгий режим как раньше: каждая форма — отдельное слово, совпасть должны две */
+  const flat=[];
+  groups.forEach(g=>g.forEach(st=>{ if(!flat.some(f=>f[0]===st)) flat.push([st]); }));
+  return flat;
+}
+/* синоним каталога по основе слова: «шуруповёрта», «шуруповёрты» */
+let ART_SYN_LIVE_ST = null;
+function artSynLive(st){
+  if(!ART_SYN_LIVE_ST){ ART_SYN_LIVE_ST = new Map(); Object.keys(ART_SYN_LIVE).forEach(k=>ART_SYN_LIVE_ST.set(rstem(k), ART_SYN_LIVE[k])); }
+  return ART_SYN_LIVE_ST.get(st) || "";
+}
+/* live — живой поиск продавца: понимает сокращения каталога, марки по-русски, единицы
+   («2 метра» → 2000 мм), а если строгое совпадение пусто — ищет по одному слову,
+   по типу товара, с которого начинается название. Подборы и коды сопутствующих
+   вызывают без live: им нужен строгий результат, чтобы не подсунуть чужой артикул. */
+function artSearch(q, limit, live){
   const qn = q.toLowerCase().replace(/ё/g,"е");
   const artQ = (qn.match(/\d{6,}/g)||[]);
   if(artQ.length){
     const byArt = artList().filter(x=>artQ.some(d=>x.a.indexOf(d)===0));
-    if(byArt.length) return byArt.slice(0, limit||8);
+    if(byArt.length){ const r=byArt.slice(0, limit||8); r.full=true; return r; }
   }
-  const words = artExpand(qn).filter(w=>w.length>2 && !/^\d/.test(w) && !STOP.has(w));
-  const stems = [];
-  words.forEach(w=>{ const s=artStem(w); if(stems.indexOf(s)<0) stems.push(s); });
-  if(!stems.length) return [];
-  const sizes = (qn.match(/\d{1,4}/g)||[]);
-  const res=[];
+  const groups = artGroups(qn, live);
+  if(!groups.length){ const r=[]; return r; }
+  const sizes = artSizes(qn);
   const all = artList();
-  const scan = x=>{
+  const one = (x, st) => hasWord(x._n, st) || (x._ab.length && x._ab.some(ab=>st.indexOf(ab)===0));   /* «отрезной» ← «ОТР.» */
+  const altHit = (x, st) => st.indexOf("+")<0 ? one(x, st) : st.split("+").every(p=>one(x, p));
+  const rank = (x, hit) => {
     const n=x._n;
-    let hit=0;
-    stems.forEach(st=>{
-      if(hasWord(n,st)) hit++;
-      else if(x._ab.length && x._ab.some(ab=>st.indexOf(ab)===0)) hit++;   /* «отрезной» ← «ОТР.» */
-    });
-    if(!hit) return;
-    if(stems.length>1 && hit<2) return;
-    const ratio = hit/stems.length;
-    let s = hit*4 + Math.round(ratio*10);
-    if(stems.some(st=>n.indexOf(st)===0)) s+=6;   /* название начинается с искомого слова */
-    sizes.forEach(d=>{ if(new RegExp("(^|[^0-9])"+d+"([^0-9]|$)").test(n)) s+=5; });
+    let s = hit*4 + Math.round(hit/groups.length*10);
+    if(live) groups.forEach(g=>{ if(one(x, g[0])) s+=2; });     /* слово клиента дословно — выше синонима */
+    if(groups.some(g=>g.some(st=>n.indexOf(st)===0))) s+=6;   /* название начинается с искомого слова */
+    sizes.forEach(d=>{ if(hasSize(n,d)) s+=5; });
     if(x.top) s+=1;
-    res.push([x,s]);
+    return s;
   };
   /* по индексу берём только те позиции, где есть слово с нужным началом */
-  const plain = stems.every(st=>/^[\u0430-\u044fa-z0-9]+$/.test(st));
+  const alts = [].concat.apply([], groups).map(st=>st.split("+")[0]);
+  const plain = alts.every(st=>/^[а-яa-z0-9]+$/.test(st));
+  let cand;
   if(plain){
     const idx = artIndex(), seen = new Set();
-    stems.forEach(st=>{ const list = idx.get(st.slice(0,3)); if(list) list.forEach(i=>seen.add(i)); });
-    if(!seen.size) return [];
-    Array.from(seen).sort((a,b)=>a-b).forEach(i=>scan(all[i]));   /* порядок как в каталоге */
-  } else {
-    all.forEach(scan);
+    alts.forEach(st=>{ const list = idx.get(st.slice(0,3)); if(list) list.forEach(i=>seen.add(i)); });
+    cand = Array.from(seen).sort((a,b)=>a-b).map(i=>all[i]);   /* порядок как в каталоге */
+  } else cand = all;
+  const res=[];
+  let topHit=0;
+  cand.forEach(x=>{
+    let hit=0;
+    groups.forEach(g=>{ if(g.some(st=>altHit(x,st))) hit++; });
+    if(!hit) return;
+    if(groups.length>1 && hit<2) return;
+    if(hit>topHit) topHit=hit;
+    res.push([x, rank(x,hit), hit]);
+  });
+  let out;
+  if(res.length){
+    res.sort((a,b)=>b[1]-a[1]);
+    out = res.slice(0, limit||8).map(x=>x[0]);
+    out.full = res[0][2]===groups.length;
+    return out;
   }
-  return res.sort((a,b)=>b[1]-a[1]).slice(0, limit||8).map(x=>x[0]);
+  out=[];
+  if(!live || groups.length<2) return out;
+  /* мягкий режим: по одному слову. Берём первое слово запроса, которое называет
+     что-то определённое (до 60 позиций), — «экстрактор», а не «болгарка» на полсотни строк */
+  let wide = null;
+  const verbish = st => /(ть|ти|чь)$/.test(st) || /^(сня|сним|сверл|рез|пил|крут|креп|повес|шлиф|точ|меша)/.test(st);
+  for(let gi=0; gi<groups.length; gi++){
+    const g = verbish(groups[gi][0]) ? groups[gi].slice(1) : groups[gi];
+    const r=[];
+    cand.forEach(x=>{ if(g.some(st=>altHit(x,st))) r.push([x, rank(x,1)]); });
+    if(!r.length) continue;
+    r.sort((a,b)=>b[1]-a[1]);
+    if(r.length<=60){ out = r.slice(0, limit||8).map(x=>x[0]); out.loose = true; return out; }
+    if(!wide) wide = r;
+  }
+  if(wide){ out = wide.slice(0, limit||8).map(x=>x[0]); out.loose = true; }
+  return out;
 }
 
 /* Индекс: первые три буквы слова → номера позиций каталога.
@@ -12000,7 +12139,15 @@ function logMiss(q){
   list.unshift(q);
   store.set("misses", JSON.stringify(list.slice(0,60)));
 }
-function clearMisses(){ store.set("misses","[]"); }
+/* «Не помогло»: ответ нашёлся, но не тот — это видно только продавцу */
+function getWrongs(){ return store.json("wrongs","[]"); }
+function logWrong(q){
+  q=(q||"").trim(); if(q.length<2) return;
+  const list=getWrongs().filter(x=>x.toLowerCase()!==q.toLowerCase());
+  list.unshift(q);
+  store.set("wrongs", JSON.stringify(list.slice(0,60)));
+}
+function clearMisses(){ store.set("misses","[]"); store.set("wrongs","[]"); }
 
 let _kbAllSrc=null, _kbAll=null;
 function kbAll(){
@@ -12036,7 +12183,29 @@ const SYN = {
  "сверлить":"отверстие бур сверло","просверлить":"отверстие бур сверло",
  "болт":"саморез крепёж","гайка":"ключ головка","штроба":"штробить",
  "пылесосить":"пылесос уборка","сосать":"пылесос",
- "круг":"диск","круги":"диски","дискам":"диск","диски":"диск"
+ "круг":"диск","круги":"диски","дискам":"диск","диски":"диск",
+
+ /* как спрашивают в зале про ремонт, возврат, сравнения и возражения;
+    формы слова ловятся по основе: «прикипевшую», «ремонтируют», «щёточного» */
+ "прикипевший":"смазка проникающая","закисла":"смазка проникающая","заржавел":"смазка проникающая ржавчина",
+ "вернуть":"возврат","сдать":"возврат","обменять":"возврат обмен","возвращать":"возврат",
+ "ремонт":"сервис ремонт гарантийный","починить":"сервис ремонт","ремонтируют":"сервис ремонт",
+ "сломался":"сервис гарантия негарантийный","сломан":"сервис гарантия","сломанный":"сервис гарантия",
+ "сгорел":"сервис гарантия перегрев","перегрелся":"перегрев","греется":"перегрев","горит":"перегрев",
+ "дорого":"дорого возражение","дороговато":"дорого","дешевле":"дешевле интернете дороже",
+ "интернет":"интернете дешевле","озон":"интернете дешевле","озоне":"интернете дешевле","маркетплейс":"интернете дешевле",
+ "конкурент":"соседнем магазине дороже","соседнем":"соседнем магазине",
+ "подумает":"подумаю","подумать":"подумаю","китай":"китайское","китайский":"китайское",
+ "щеточный":"бесщёточный","коллекторный":"бесщёточный",
+ "ач":"ампер час","амперчас":"ампер час",
+ "ухаживать":"памятка уход","обслуживать":"памятка уход обслуживание","хранить":"хранение памятка",
+ "накачать":"подкачка колёс автокомпрессор","подкачать":"подкачка колёс автокомпрессор","колесо":"подкачка колёс","шины":"подкачка колёс",
+ "паять":"паяльник припой","спаять":"паяльник припой","пайка":"паяльник припой",
+ "цепь":"цепь пилы","бензопила":"цепь пилы","точить":"заточка",
+ "выкрутить":"экстрактор ключ","вывернуть":"экстрактор ключ",
+ "решить":"знает","определиться":"знает","мешать":"размешать миксер","намешать":"размешать миксер",
+ "снимать":"снять снятый","снимает":"снять снятый","сняли":"снять снятый",
+ "начинающий":"новичку","начинающего":"новичку","начинающему":"новичку","подарок":"набор инструмента"
 };
 function expandQuery(q){
   const words=q.toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).filter(Boolean);
@@ -12137,8 +12306,8 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "59";
-const APP_DATE = "19.09.2026";
+const APP_VERSION = "60";
+const APP_DATE = "04.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
 const CLOSING = [
@@ -13492,8 +13661,11 @@ function aisleOrder(keys){
    — если не нашлось ничего — отвечаем честно, а не молчим.
    ============================================================ */
 
-/* Живая речь: само по себе не ищется */
-const FILLER = new Set([...STOP,
+/* Живая речь: само по себе не ищется.
+   Глаголы действия («резать», «сверлить») здесь оставляем: они отличают
+   «резать плитку» от «сверлить плитку». Их частоту гасит вес по редкости слова. */
+const ACTION_WORDS = new Set(["резать","резка","режет","пилить","сверлить","крепить","клеить","шлифовать"]);
+const FILLER = new Set([...[...STOP].filter(w=>!ACTION_WORDS.has(w)),
  "вас","нас","вам","нам","нибудь","либо","что","чтото","чего","чему","чем","кто","кому",
  "так","такое","такая","такой","такие","тут","там","вот","ещё","еще","уже","тоже","только",
  "штука","штуковина","приблуда","фигня","хрень","штучка","вещь","вещица","предмет",
@@ -13502,27 +13674,86 @@ const FILLER = new Set([...STOP,
  "добрый","день","утро","вечер","ночи","слушайте","послушайте","извините","простите",
  "который","которая","которое","которые","чтобы","чтоб","если","когда","потом","затем",
  "очень","самый","самая","самое","совсем","просто","вообще","примерно","около","типа","вроде",
- "меня","него","них","один","одна","одно","два","две","пара","парочка","немного","чуть"]);
+ "меня","него","них","один","одна","одно","два","две","пара","парочка","немного","чуть",
+ "говорит","говорят","сказал","сказала","сказали","спрашивает","спросил","спросила","просит",
+ "интересуется","подскажи","скажи","покажи","нужен","нужна","нужно","нужны","надо","мне","ему","ей",
+ "его","она","они","вот","этот","эта","это","эти","тот","той","того","есть","ли","бы","же","ну",
+ "лежат","лежит","лежать","находится","находятся","найти","посмотреть","наличии","наличие","продаются",
+ /* в отделе инструмента «инструмент» и «товар» ничего не уточняют */
+ "инструмент","инструмента","инструменты","инструментом","инструментов","товар","товара","товары","после",
+ "человек","человеку","человека","люди","людям",
+ /* «клиент хочет…», «клиенту нужно…» — так продавец пересказывает, смысла это не несёт */
+ "клиент","клиента","клиенту","клиентом","клиенты","покупатель","покупателю","хочет","хотят","хотел","хотела"]);
 
-/* Окончания — длинные раньше коротких */
-const SUFFIXES = ["ированием","ированию","ирования","ирование","ованием","ованию","ования","ование",
- "аторами","аторов","аторам","аторах","атором","аторы","атора","атору","аторе","атор",
- "ениями","ениям","ениях","ением","ения","ению","ении","ение",
- "овками","овкам","овках","овкой","овки","овка","овку","овке",
- "остью","остей","ости","ость","ками","кам","ках","ков","кой","ки","ку","ка","ке",
- "ами","ями","ого","его","ому","ему","ыми","ими","ые","ие","ая","яя","ое","ее",
- "ах","ях","ам","ям","ом","ем","ов","ев","ей","ой","ый","ий","ую","юю","ья","ье","ью",
- "а","я","и","ы","о","е","у","ю","ь","й"].sort((a,b)=>b.length-a.length);
+/* Короткие слова, которые всё-таки ищем: ПВ, А·ч, Нм, Дж, биты PH, PZ, TX */
+const SHORT_OK = new Set(["пв","ач","нм","дж","wd","ph","pz","tx","sl"]);
+const keepWord = w => (w.length>=3 || SHORT_OK.has(w) || /^\d\d$/.test(w)) && !FILLER.has(w);   /* 12 В, 18 В, 68 мм — тоже слова */
 
-/* Основа слова: «брошюрования», «брошюровка», «брошюратор» → «брошюр» */
-function rstem(w){
-  w = w.replace(/ё/g,"е");
-  if(w.length < 5) return w;
-  for(let i=0;i<SUFFIXES.length;i++){
-    const s = SUFFIXES[i];
-    if(w.length - s.length >= 4 && w.endsWith(s)) return w.slice(0, w.length - s.length);
+/* ---- Основа слова: стеммер Портера (Snowball) для русского ----
+   Срезает окончания глаголов, причастий, прилагательных и существительных:
+   «ремонтируют» → «ремонтир», «сверлить» и «сверло» → «сверл», «отрезные» → «отрезн».
+   Работает только в «RV» — части слова после первой гласной. Результат кэшируется:
+   одно и то же слово встречается в базе сотни раз. */
+const SB = {
+  gerund1:/([ая])(?:вшись|вши|в)$/, gerund2:/(?:ившись|ывшись|ивши|ывши|ив|ыв)$/,
+  reflexive:/(?:ся|сь)$/,
+  adjective:/(?:ими|ыми|его|ого|ему|ому|ее|ие|ые|ое|ей|ий|ый|ой|ем|им|ым|ом|их|ых|ую|юю|ая|яя|ою|ею)$/,
+  participle1:/([ая])(?:ем|нн|вш|ющ|щ)$/, participle2:/(?:ивш|ывш|ующ)$/,
+  verb1:/([ая])(?:ла|на|ете|йте|ли|й|л|ем|н|ло|но|ет|ют|ны|ть|ешь|нно)$/,
+  verb2:/(?:ила|ыла|ена|ейте|уйте|ите|или|ыли|ей|уй|ил|ыл|им|ым|ен|ило|ыло|ено|ят|ует|уют|ит|ыт|ены|ить|ыть|ишь|ую|ю)$/,
+  noun:/(?:иями|ями|ами|иях|иям|ием|ией|ях|ям|ам|ем|ом|ах|ев|ов|ие|ье|еи|ии|ей|ой|ий|ию|ью|ия|ья|а|е|и|й|о|у|ы|ь|ю|я)$/
+};
+/* Самое длинное окончание из двух групп. Группа 1 срезается только после «а»/«я», сама буква остаётся. */
+function sbCut(s, re1, re2){
+  let cut = -1;
+  const m1 = s.match(re1); if(m1) cut = m1.index + 1;
+  const m2 = s.match(re2); if(m2 && (cut<0 || m2.index<cut)) cut = m2.index;
+  return cut;
+}
+function sbR2(w){
+  const re = /[аеиоуыэюя][^аеиоуыэюя]/g;
+  let m = re.exec(w); if(!m) return w.length;
+  re.lastIndex = m.index + 2;
+  m = re.exec(w); return m ? m.index + 2 : w.length;
+}
+function sbStem(w){
+  const v = w.search(/[аеиоуыэюя]/);
+  if(v<0 || v===w.length-1) return w;
+  const pre = w.slice(0, v+1);
+  let rv = w.slice(v+1), c = sbCut(rv, SB.gerund1, SB.gerund2);
+  if(c>=0) rv = rv.slice(0,c);
+  else {
+    rv = rv.replace(SB.reflexive, "");
+    const ma = rv.match(SB.adjective);
+    if(ma){
+      rv = rv.slice(0, ma.index);
+      c = sbCut(rv, SB.participle1, SB.participle2);
+      if(c>=0) rv = rv.slice(0,c);
+    } else {
+      c = sbCut(rv, SB.verb1, SB.verb2);
+      if(c>=0) rv = rv.slice(0,c);
+      else { const mn = rv.match(SB.noun); if(mn) rv = rv.slice(0, mn.index); }
+    }
   }
-  return w;
+  rv = rv.replace(/и$/, "");
+  let word = pre + rv;
+  const md = word.match(/ость?$/);
+  if(md && md.index >= sbR2(word)) word = word.slice(0, md.index);
+  if(/нн$/.test(word)) return word.slice(0,-1);
+  const ms = word.match(/ейше?$/);
+  if(ms && ms.index>v){ word = word.slice(0, ms.index); return /нн$/.test(word) ? word.slice(0,-1) : word; }
+  if(/ь$/.test(word) && word.length-1>v) word = word.slice(0,-1);
+  return word;
+}
+const STEM_CACHE = new Map();
+function rstem(w){
+  w = String(w).replace(/ё/g,"е");
+  let r = STEM_CACHE.get(w);
+  if(r===undefined){
+    r = (w.length<3 || /^\d/.test(w)) ? w : sbStem(w);
+    if(STEM_CACHE.size<40000) STEM_CACHE.set(w, r);
+  }
+  return r;
 }
 
 /* Одна основа — продолжение другой: «наждач» и «наждачн» это одно слово.
@@ -13538,34 +13769,75 @@ function stemMatch(a,b){
 function stemsOf(text){
   const out=[], seen=new Set();
   String(text||"").toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).forEach(w=>{
-    if(w.length<3 || FILLER.has(w)) return;
-    const st = /^\d/.test(w) ? w : rstem(w);
+    if(!keepWord(w)) return;
+    const st = rstem(w);
     if(!seen.has(st)){ seen.add(st); out.push(st); }
   });
   return out;
 }
 
-/* Слова запроса плюс то, как это же называют в каталоге и в базе */
-function queryStems(q){
+/* Марки из каталога зала: клиент говорит по-русски, в каталоге и шпаргалках — латиница */
+const BRAND_TR = {
+ "макита":"makita","макиту":"makita","макиты":"makita","элитех":"elitech","элитек":"elitech",
+ "декстер":"dexter","дэкстер":"dexter","рейдж":"rage","рэйдж":"rage","вертекс":"vertex",
+ "оазис":"oasis","дилвис":"dilwis","матрикс":"matrix","вира":"vira","кранц":"kranz","деко":"deko",
+ "спарта":"sparta","неолазер":"neolaser","рексант":"rexant","крафтер":"krafter","дензел":"denzel",
+ "дензель":"denzel","ветонит":"vetonit","хутер":"huter","хьютер":"huter","рокфилд":"rockfield",
+ "зитрек":"zitrek","синтек":"sintec","кондтрол":"condtrol","фиберон":"fiberon","капро":"kapro",
+ "гросс":"gross","патриот":"patriot","эсаб":"esab","нортон":"norton","айнхель":"einhell","эйнхель":"einhell"
+};
+
+/* Разговорные синонимы по основе: «прикипела», «прикипевший» найдут то же, что «прикипел» */
+let SYN_ST = null;
+function synFor(w, st){
+  if(SYN[w]) return SYN[w];
+  if(!SYN_ST){ SYN_ST = new Map(); Object.keys(SYN).forEach(k=>{ const s=rstem(k); if(!SYN_ST.has(s)) SYN_ST.set(s, SYN[k]); }); }
+  if(SYN_ST.has(st)) return SYN_ST.get(st);
+  /* «бензопила» и «бензопилы» стеммер режет по-разному — ищем близкую основу */
+  let hit = "";
+  SYN_ST.forEach((v,k)=>{ if(!hit && stemMatch(k, st)) hit = v; });
+  return hit;
+}
+
+/* Слова запроса. Каждое слово — отдельная группа: само слово и то, как это же
+   называют в базе и в каталоге. Совпадение синонима засчитывает слово, а не добавляет новое. */
+function queryGroups(q){
   const words = String(q||"").toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).filter(Boolean);
-  const bag = words.slice();
+  const groups=[], seen=new Set();
   words.forEach(w=>{
-    if(SYN[w])     bag.push.apply(bag, SYN[w].split(" "));
-    if(ART_SYN[w]) bag.push.apply(bag, ART_SYN[w].split(" "));
+    if(!keepWord(w)) return;
+    const st = rstem(w);
+    if(seen.has(st)) return; seen.add(st);
+    const alts = [[st,1]];
+    const add = (s,k)=>String(s||"").split(" ").forEach(x=>{
+      if(!x || !keepWord(x)) return;
+      const y = rstem(x);
+      if(!alts.some(a=>a[0]===y)) alts.push([y,k]);
+    });
+    add(synFor(w, st), 1);
+    add(ART_SYN[w], 0.6);
+    add(BRAND_TR[w], 1);
+    /* приставка меняет основу, а смысл тот же: «просверлить» — «сверлить», «покраска» — «краска» */
+    const pm = w.match(VERB_PREFIX);
+    if(pm){ const rest = rstem(w.slice(pm[1].length)); if(rest.length>=4 && !alts.some(a=>a[0]===rest)) alts.push([rest,0.6]); }
+    groups.push({w:w, st:st, alts:alts});
   });
-  const out=[], seen=new Set();
-  bag.forEach(w=>{
-    if(w.length<3 || FILLER.has(w)) return;
-    const st = /^\d/.test(w) ? w : rstem(w);
-    if(!seen.has(st)){ seen.add(st); out.push(st); }
-  });
-  return out;
+  /* «заточить цепь»: синоним «заточка» у слова «цепь» не должен второй раз засчитать «заточить» */
+  groups.forEach(g=>{ g.alts = g.alts.filter((a,i)=>i===0 || !groups.some(o=>o!==g && stemMatch(o.st, a[0]))); });
+  return groups;
 }
+const VERB_PREFIX = /^(пере|про|при|раз|рас|за|на|от|вы|под|над|обо|об|до|по|со|из|ис|с(?=[а-я]{5}))[а-я]{4,}/;
 
-/* Что вообще ищем: подборы, готовые ответы, шпаргалки, короткие ответы, кейсы отдела */
+
+/* ---- Что вообще ищем: всё, что есть в приложении ----
+   Подборы, готовые ответы, строки шпаргалок, «почему так», возражения, наборы под работу,
+   памятки по уходу, короткие ответы, кейсы отдела, материалы.
+   Всё, что отвечает текстом, лежит как t:"ans" с готовой карточкой {q, a, p, src}. */
 function buildDocs(){
   const docs=[];
   const plain = s => String(s||"").replace(/<[^>]+>/g," ");
+  const ftitle = k => FLOWS[k] ? FLOWS[k].title : "";
+  const A = (kind, id, ans, fields) => { ans.kind = kind; docs.push({t:"ans", id:kind+":"+id, ans:ans, fields:fields}); };
   Object.keys(FLOWS).forEach(k=>{
     const f=FLOWS[k];
     docs.push({t:"flow", id:k, fields:[[f.title,6],[f.desc,2],[f.tags,3],[f.zone,2],[f.site||"",2]]});
@@ -13574,12 +13846,30 @@ function buildDocs(){
     const v=SLANG[w];
     (Array.isArray(v)?v:[v]).forEach(id=>{ if(FLOWS[id]) docs.push({t:"flow", id:id, fields:[[w,6]]}); });
   });
-  kbAll().forEach((x,i)=>{
-    docs.push({t:"kb", id:i, item:x, fields:[[x[0],6],[String(x[3]||""),3],[plain(x[1]),1],[String(x[2]||""),1]]});
+  kbAll().forEach((x,i)=>A("kb", i, {q:x[0], a:x[1], p:String(x[2]||""), src:""},
+    [[x[0],6],[String(x[3]||""),3],[plain(x[1]),1],[String(x[2]||""),1]]));
+  REF.forEach(r=>{
+    docs.push({t:"ref", id:r.id, ref:r, fields:[[r.t,5],[r.tags||"",3]]});
+    (r.rows||[]).forEach((x,i)=>A("row", r.id+i, {q:x[0], a:x[1], p:"", src:"Шпаргалка «"+r.t+"»", ref:r.id},
+      [[x[0],5],[r.t,2],[r.tags||"",1],[plain(x[1]),1]]));
   });
-  REF.forEach(r=>{ docs.push({t:"ref", id:r.id, ref:r, fields:[[r.t,5],[r.tags||"",3]]}); });
-  QUICK.forEach((x,i)=>{ docs.push({t:"quick", id:i, row:x, fields:[[x[0],5],[x[1],2]]}); });
-  getCases().forEach((c,i)=>{ docs.push({t:"case", id:i, row:c, fields:[[c.t,5],[c.r,2]]}); });
+  WHYDB.forEach((x,i)=>A("why", "w"+i, {q:x[0], a:x[1], p:"", src:"Почему так"},
+    [[x[0],6],[x[2]||"",3],[plain(x[1]),1]]));
+  Object.keys(DEEP).forEach(k=>DEEP[k].forEach((x,i)=>A("why", "d"+k+i, {q:x[0], a:x[1], p:"", src:"Почему так · "+ftitle(k)},
+    [[x[0],5],[ftitle(k),2],[plain(x[1]),1]])));
+  Object.keys(WHY).forEach(k=>WHY[k].forEach((x,i)=>A("why", "y"+k+i, {q:x[0], a:x[1], p:"", src:"Как устроено · "+ftitle(k)},
+    [[x[0],5],[ftitle(k),2],[plain(x[1]),1]])));
+  const objs = OBJ_BASE.map(o=>[o,""]);
+  Object.keys(OBJ_BY_ZONE).forEach(z=>OBJ_BY_ZONE[z].forEach(o=>objs.push([o,z])));
+  objs.forEach((x,i)=>A("obj", i, {q:x[0][0], a:x[0][1], p:"", src:"Если клиент возражает"+(x[1]?" · "+x[1]:"")},
+    [[x[0][0],6],[x[1]+" возражение",1],[plain(x[0][1]),1]]));
+  KITS.forEach((k,i)=>A("kit", i, {q:k.t, src:"Набор под работу", p:"",
+      a:'<ul class="tight">'+k.items.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul>"+(k.hint?"<div style=\"margin-top:8px;color:var(--ink-2)\">"+esc(k.hint)+"</div>":"")},
+    [[k.t,6],[k.tags||"",3],[k.items.join(" "),1],[k.hint||"",1]]));
+  Object.keys(CARE).forEach(k=>A("care", k, {q:"Памятка: "+(ftitle(k)||k), a:esc(CARE[k]).replace(/\n/g,"<br>"), p:"", src:"Уход и хранение"},
+    [[ftitle(k)+" памятка уход хранение обслуживание",4],[CARE[k],1]]));
+  QUICK.forEach((x,i)=>A("quick", i, {q:x[0], a:esc(x[1]), p:"", src:"Короткий ответ"}, [[x[0],5],[x[1],2]]));
+  getCases().forEach((c,i)=>A("case", i, {q:c.t, a:esc(c.r), p:"", src:"Кейс отдела"}, [[c.t,5],[c.r,2]]));
   MATERIALS.forEach(m=>{ docs.push({t:"mat", id:m[1], row:m, fields:[[m[0],5],[m[1],3]]}); });
   return docs;
 }
@@ -13628,84 +13918,156 @@ function fuzzyPostings(idx, st){
   return out;
 }
 
-/* Главный поиск. Совпало одно слово — уже результат, просто ниже в списке. */
+/* Главный поиск. Совпало одно слово — уже результат, просто ниже в списке.
+   Каждое слово весит по своей редкости: «снять» есть в двадцати ответах, «ржавчину» — в трёх,
+   поэтому «снять ржавчину» ведёт к ржавчине, а не к краске. */
 function searchAll(q){
-  const terms = queryStems(q);
-  const res = {flows:[], kb:[], refs:[], quick:[], cases:[], mats:[], best:0, terms:terms, unknown:[]};
-  if(!terms.length) return res;
-  const idx = searchIndex();
+  const groups = queryGroups(q);
+  const res = {flows:[], answers:[], refs:[], mats:[], near:[], best:0,
+               terms:groups.map(g=>g.st), unknown:[], weak:[], fixes:{}};
+  if(!groups.length) return res;
+  const idx = searchIndex(), N = SDOCS.length;
   const acc = new Map();
-  terms.forEach((t,ti)=>{
-    let post = idx.get(t.slice(0,4)) || [];
-    let hit = post.filter(p=>stemMatch(p[2],t));
-    let k = 1;
-    if(!hit.length){ res.unknown.push(t); hit = fuzzyPostings(idx,t); k = 0.45; }
-    hit.forEach(p=>{
-      let c = acc.get(p[0]);
-      if(!c){ c = {s:0, seen:new Set()}; acc.set(p[0],c); }
-      c.s += p[1]*k;
-      c.seen.add(ti);
+  let totalW = 0;
+  groups.forEach(g=>{
+    const best = new Map();
+    let top = 0;
+    /* Редкость считаем по каждой форме слова отдельно и только по заголовкам:
+       «возврат» в заголовках встречается дважды, «гарантия» — десяток раз */
+    const idf = list => {
+      const docs = new Set(); list.forEach(p=>{ if(p[1]>=3) docs.add(p[0]); });
+      const n = docs.size || new Set(list.map(p=>p[0])).size;
+      return 0.2 + 0.8*Math.log(1 + N/Math.max(1,n))/Math.log(1 + N);
+    };
+    let gw = 0;
+    const take = (list, k) => { if(!list.length) return; const w = idf(list); if(w>gw) gw = w;
+      list.forEach(p=>{
+        const v = p[1]*k*w, b = best.get(p[0]);
+        if(b===undefined || b[0]<v) best.set(p[0], [v, p[1]]);   /* покрытие — по полю, где нашлось слово */
+        if(p[1]>top) top = p[1];
+      }); };
+    g.alts.forEach(a=>take((idx.get(a[0].slice(0,4))||[]).filter(p=>stemMatch(p[2],a[0])), a[1]));
+    if(!best.size && g.st.length>=5){                                         /* опечатка — чуть ниже точного */
+      const fz = fuzzyPostings(idx, g.st);
+      take(fz, 0.6);
+      const cnt = {}; fz.forEach(p=>{ cnt[p[2]] = (cnt[p[2]]||0)+1; });
+      const fix = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+      if(fix) res.fixes[g.w] = fix;                                           /* «компресор» → «компрессор» — для каталога */
+      if(best.size) g.fuzzy = true;
+    }
+    if(!best.size){ res.unknown.push(g.st); return; }
+    if(top < 3) res.weak.push(g.st);            /* слово есть только в тексте ответов, не в заголовках */
+    else totalW += gw;                          /* такое слово скорее шум («человек», «подошёл») — в покрытие не идёт */
+    /* покрытие: слово в заголовке засчитано целиком, в тексте ответа — на пятую часть,
+       иначе длинный ответ, где все слова случайно встретились, обходит точный заголовок */
+    best.forEach((v,di)=>{
+      let c = acc.get(di);
+      if(!c){ c = {s:0, w:0}; acc.set(di,c); }
+      c.s += v[0]; c.w += gw*Math.min(1, v[1]/5);
     });
   });
+  res.fuzzyOnly = groups.every(g=>g.fuzzy || res.unknown.indexOf(g.st)>=0) && groups.some(g=>g.fuzzy);
   const ranked=[];
   acc.forEach((c,di)=>{
-    const cover = c.seen.size/terms.length;
-    ranked.push([SDOCS[di], c.s*(0.35+0.65*cover)*(cover>=1?1.4:1)]);
+    const cover = totalW ? Math.min(1, c.w/totalW) : 0.3;
+    ranked.push([SDOCS[di], c.s*(0.3+0.7*cover)*(cover>0.999?1.3:1)]);
   });
   ranked.sort((a,b)=>b[1]-a[1]);
   if(ranked.length) res.best = ranked[0][1];
   /* Порог считаем в каждом разделе свой: сильный ответ из базы не должен
      срезать подходящий подбор — это разные полки выдачи, а не один список. */
-  const RATIO = {flow:0.5, kb:0.4, ref:0.45, quick:0.45, case:0.45, mat:0.5};
+  const RATIO = {flow:0.5, ans:0.5, ref:0.45, mat:0.5};
   const topOf = {};
   ranked.forEach(r=>{ const t=r[0].t; if(topOf[t]===undefined) topOf[t]=r[1]; });
   const seenFlow = new Set(), seenRef = new Set();
   ranked.forEach(r=>{
     const d=r[0];
-    if(r[1] < Math.max(2.2, topOf[d.t]*(RATIO[d.t]||0.45))) return;
+    if(r[1] < Math.max(1.3, topOf[d.t]*(RATIO[d.t]||0.45))) return;
     if(d.t==="flow"){ if(seenFlow.has(d.id)) return; seenFlow.add(d.id); if(FLOWS[d.id]) res.flows.push(d.id); }
-    else if(d.t==="kb")   res.kb.push(d.item);
+    else if(d.t==="ans")  res.answers.push(d.ans);
     else if(d.t==="ref"){ if(seenRef.has(d.id)) return; seenRef.add(d.id); res.refs.push(d.ref); }
-    else if(d.t==="quick") res.quick.push(d.row);
-    else if(d.t==="case")  res.cases.push(d.row);
-    else if(d.t==="mat")   res.mats.push(d.row);
+    else if(d.t==="mat")  res.mats.push(d.row);
   });
+  /* Ничего не прошло порог — отдаём то, что ближе всего, а не пустой экран */
+  if(!res.flows.length && !res.answers.length && !res.refs.length){
+    const seen = new Set();
+    ranked.forEach(r=>{
+      if(res.near.length>=3 || r[1]<0.9) return;
+      const d=r[0], key=d.t+":"+d.id;
+      if(seen.has(key) || d.t==="mat") return; seen.add(key);
+      res.near.push(d);
+    });
+  }
   return res;
 }
 
+/* ---- Не та раскладка: «gthajhfnjh» — это «перфоратор» ---- */
+const LAY_EN = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`";
+const LAY_RU = "йцукенгшщзхъфывапролджэячсмитьбюё";
+function layoutKnown(s){
+  const idx = searchIndex();
+  return s.split(/[^a-zа-я0-9]+/).filter(w=>w.length>=3).filter(w=>{
+    const st = rstem(w);
+    return (idx.get(st.slice(0,4))||[]).some(p=>stemMatch(p[2],st)) || artSearch(w,1).length>0;
+  }).length;
+}
+function fixLayout(q){
+  q = String(q||"").toLowerCase().trim();
+  if(!/[a-z]/.test(q) || /[а-яё]/.test(q)) return null;
+  const conv = q.split("").map(c=>{ const i=LAY_EN.indexOf(c); return i<0?c:LAY_RU[i]; }).join("");
+  return layoutKnown(conv) > layoutKnown(q) ? conv : null;
+}
+
 /* ---- Чего у нас нет: отвечаем честно и отправляем туда, где есть ----
-   Слева — основы слов (окончания срезаны), справа — что сказать клиенту.
+   Слева — основы слов, справа — что сказать клиенту. Ключ длиной от пяти букв
+   ловит и продолжения слова («брошюр» → «брошюровщик»); короткий или со знаком «=» —
+   только само слово («краск=» не должен поймать «краскопульт»).
    Список правьте под свой магазин. */
 const NOT_OURS = [
  [["брошюр","переплет","дырокол","ламинир","канцеляр","скоросшиват","файлик"],
   "Канцелярия", "Брошюровщиков, переплёта и канцтоваров в строительном магазине нет — это канцелярский магазин."],
- [["обои","обойн","колеровк","эмал","шпаклевк","штукатурк","цемент","пескобетон","саморавн"],
+ [["обои","обойн","колеровк","эмал","шпаклевк","штукатурк","цемент","пескобетон","саморавн","краск=","грунтовк","затирк"],
   "Отделочные материалы и краски", "Сам материал — соседний отдел. У нас инструмент под него: шпатели, правила, миксеры, краскопульты."],
- [["смесител","унитаз","раковин","сифон","полотенцесушител","бачок","биде","инсталляц"],
+ [["смесител","унитаз","раковин","сифон","полотенцесушител","бачок","биде","инсталляц","ванн=","душев","водонагреват"],
   "Сантехника", "Сантехника — другой отдел. У нас инструмент и фитинги под пневматику, не под воду."],
- [["розетк","выключател","щиток","лампочк","светильник","люстр","бра","патрон е27","автомат дифф"],
+ [["розетк","выключател","щиток","лампочк","светильник","люстр","бра","изолент","фонар","автомат дифф","патрон е27"],
   "Электротовары и свет", "Электрику и свет держит другой отдел. У нас инструмент электрика: стрипперы, пресс-клещи, кабелерезы."],
+ [["удлинител"],
+  "Электротовары", "Удлинитель-переноску и катушку держит отдел электротоваров. У нас удлинители только для оснастки: SDS, биты, головки."],
  [["ламинат","линолеум","плинтус","ковролин","паркет","подложк","керамогранит"],
   "Напольные покрытия", "Само покрытие в другом отделе. У нас инструмент для укладки и подрезки."],
- [["межкомнатн","наличник","доборн","подоконник","откос"],
-  "Двери и окна", "Двери, окна и всё к ним — отдельный отдел."],
- [["семен","удобрен","газонокосилк","рассад","теплиц","саженц"],
+ [["межкомнатн","наличник","доборн","подоконник","откос","двер="],
+  "Двери и окна", "Двери, окна и всё к ним — отдельный отдел. Замки, петли и инструмент под установку — у нас."],
+ [["семен","удобрен","газонокосилк","рассад","теплиц","саженц","триммер","лопат","грабл","тачк","секатор","бензопил","мотоблок","культиватор","кусторез"],
   "Сад", "Садовый отдел рядом. У нас из садового только то, что режет, копает и крепит."],
  [["шкаф","табурет","столешниц","диван","матрас","кроват"],
   "Мебель и кухни", "Мебель — другой отдел."]
 ];
-/* Проверяем только те слова, которых приложение вообще не знает:
-   «кабель» и «наждачная бумага» у нас свои, в чужой отдел их отправлять нельзя. */
-function notOurs(unknown){
+/* Вопрос про работу с материалом — наш вопрос, в чужой отдел не отправляем */
+const TASK_RE = /(^|[^а-я])(чем|как|рез|реж|пил|сверл|креп|закреп|повес|вешат|сня|сним|содр|удал|шлиф|шкур|зашкур|клеит|приклеи|штроб|меша|замеш|размеш|уклад|улож|полож|монтир|монтаж|обрез|подрез|отрез|разрез|нарез|демонт|выровн|затир|заточ|наточ|точит|инструмент)/;
+let NOT_OURS_ST = null;
+function notOurs(q){
+  if(!NOT_OURS_ST) NOT_OURS_ST = NOT_OURS.map(r=>r[0].filter(k=>k.indexOf(" ")<0).map(k=>{
+    const exact = /=$/.test(k) || k.length<5, base = rstem(k.replace(/=$/,""));
+    return {k:base, exact:exact};
+  }));
+  const qn = String(q||"").toLowerCase().replace(/ё/g,"е").trim();
+  const words = qn.split(/[^a-zа-я0-9]+/).filter(w=>w.length>=3 && keepWord(w));
   for(let i=0;i<NOT_OURS.length;i++){
-    const row = NOT_OURS[i];
-    for(let j=0;j<unknown.length;j++){
-      const t = unknown[j];
-      for(let n=0;n<row[0].length;n++){
-        const k = row[0][n];
-        if(t===k || (t.length>=5 && k.length>=5 && (t.indexOf(k)===0 || k.indexOf(t)===0)))
-          return {dept:row[1], text:row[2]};
+    for(let j=0;j<words.length;j++){
+      const t = rstem(words[j]);
+      const hit = NOT_OURS_ST[i].some(x => t===x.k
+        || (t.indexOf(x.k)===0 && (x.exact ? t.length-x.k.length<=2 : true))
+        || (!x.exact && t.length>=5 && x.k.indexOf(t)===0 && x.k.length-t.length<=2));   /* «налич» — не «наличник» */
+      if(!hit) continue;
+      if(TASK_RE.test(qn)) return null;                    /* «чем резать ламинат» — наш вопрос */
+      const gs = queryGroups(qn);
+      if(gs.length>1){                                     /* «пистолет для герметика» — наш товар */
+        const a = artSearch(qn, 1);
+        if(a.length && a.full) return null;
       }
+      /* Кнопка материала («Ламинат») спрашивает про инструмент — тогда только тихая строка внизу */
+      return {dept:NOT_OURS[i][1], text:NOT_OURS[i][2], strong:!MATERIALS.some(m=>m[1]===qn)};
     }
   }
   return null;
@@ -13842,67 +14204,103 @@ function resultsHTML(){
     });
   }
   const posShown = h.length > hBeforePos;
-  const arts = artSearch(q, 6);
-  if(arts.length){
-    h += `<div class="eyebrow">Товар в зале · точный адрес</div>`;
-    arts.forEach(x=>h+=`<div class="artc${x.top?" top":""}">
+
+  /* не та раскладка: ищем по исправленному и говорим об этом */
+  const lay = fixLayout(q);
+  const qx = lay || q;
+  if(lay) h += `<div class="note" style="margin-bottom:10px">Похоже, клавиатура стояла на латинице — ищу «${esc(lay)}».</div>`;
+
+  const FOUND = searchAll(qx);
+  /* Опечатку, которую простил общий поиск, правим и для каталога — но только если такого слова
+     в каталоге нет. «Беруши» в базе ответов похожи на «берут», а в каталоге они есть как есть. */
+  const fixes = {};
+  Object.keys(FOUND.fixes).forEach(w=>{ if(!artKnows(w)) fixes[w] = FOUND.fixes[w]; });
+  const arts = artSearch(Object.keys(fixes).length
+    ? qx.replace(/[a-zа-яё0-9]+/gi, w => fixes[w.toLowerCase().replace(/ё/g,"е")] || w) : qx, 6, true);
+  if(FOUND.fuzzyOnly && !Object.keys(fixes).length && arts.length){ FOUND.flows=[]; FOUND.answers=[]; FOUND.refs=[]; FOUND.near=[]; }
+  const sl    = slangHit(qx);
+  const flows = sl.concat(FOUND.flows.filter(k=>sl.indexOf(k)<0)).slice(0, arts.full ? 2 : 4);
+  const ans   = FOUND.answers;
+  const refs  = FOUND.refs.slice(0,4);
+  const off   = notOurs(qx);
+  const offBig = !!(off && off.strong);
+
+  const artHTML = () => !arts.length ? "" :
+    `<div class="eyebrow">${arts.loose ? "Товар в зале · по главному слову" : "Товар в зале · точный адрес"}</div>`
+    + arts.map(x=>`<div class="artc${x.top?" top":""}">
       <div class="artn">${esc(x.n)}</div>
       <div class="artrow">
         <span class="artlm">ЛМ ${esc(x.a)}</span>
         <span class="artad">${esc(artAddr(x))}</span>
       </div>
       ${x.top?'<div class="arttop">ТОП — держим в наличии</div>':""}
-    </div>`);
+    </div>`).join("");
+  const flowHTML = () => {
+    let x = "";
+    if(sl.length) x += `<div class="eyebrow">Клиент сказал так — значит нужен${sl.length>1?" (уточните, что именно)":""}</div>`
+                     + sl.map(k=>flowCard(k)).join("");
+    const rest = flows.filter(k=>sl.indexOf(k)<0);
+    if(rest.length) x += `<div class="eyebrow">Подбор по шагам</div>` + rest.map(k=>flowCard(k)).join("");
+    return x;
+  };
+  const topHTML = () => {
+    if(!ans.length) return "";
+    const x = ans[0], place = x.p || x.src;
+    return `<div class="oneline">
+      <div class="ol">${esc(ansShort(x))}</div>
+      ${place?`<div class="op">${esc(place)}</div>`:""}</div>
+      <div class="eyebrow">Подробно</div>
+      <div class="kb">
+        <div class="kbshort">${esc(ansShort(x))}${x.p?`<span class="kbpl">${esc(x.p)}</span>`:""}</div>
+        ${x.src?`<div class="kbsrc">${esc(x.src)}</div>`:""}
+        <div class="kbq">${esc(x.q)}</div>
+        <div class="kba">${x.a}</div>
+        ${x.ref?`<button class="minibtn" data-ref="${esc(x.ref)}" style="margin-top:9px">Вся шпаргалка</button>`:""}
+        ${x.kind==="kb" && getMyKB().some(m=>m.q===x.q) ? `<button class="minibtn del" data-delkb="${esc(x.q)}" style="margin-top:8px">Своя запись · удалить</button>` : ""}
+      </div>`;
+  };
+  const moreHTML = list => list.map(x=>`<details class="kb more">
+      <summary>${x.src?`<div class="kbsrc">${esc(x.src)}</div>`:""}<div class="kbq">${esc(x.q)}</div>
+        <div class="kbmore">${esc(ansShort(x))}</div></summary>
+      <div class="kba">${x.a}</div>
+      ${x.p?`<div class="kbp">${esc(x.p)}</div>`:""}
+      ${x.ref?`<button class="minibtn" data-ref="${esc(x.ref)}" style="margin-top:9px">Вся шпаргалка</button>`:""}
+    </details>`).join("");
+  const offHTML = big => big
+    ? `<div class="block pick" style="border-left-color:var(--alarm)">
+         <h3>Этого у нас нет: ${esc(off.dept)}</h3>
+         <div style="font-size:14.5px;color:var(--ink-2)">${esc(off.text)}</div>
+         <div style="font-size:13px;color:var(--ink-3);margin-top:8px">Скажите это прямо — человек уйдёт с ответом, а не с ощущением, что его отфутболили.</div>
+       </div>`
+    : `<div class="note" style="margin-top:12px">Сам товар — в другом отделе: <b>${esc(off.dept)}</b>. ${esc(off.text)}</div>`;
+
+  /* Что показать первым, зависит от того, как спросили:
+     вопрос («чем», «как», «или», «снять», «повесить») — сначала ответ;
+     товар с размером или «где» («коронка 68», «где буры») — сначала полка;
+     просто название («перфоратор») — сначала подбор, потом полка. */
+  const kind = queryKind(qx, arts);
+  if(offBig) h += offHTML(true);
+  if(kind==="lookup")    h += artHTML() + flowHTML() + topHTML();
+  else if(kind==="name") h += flowHTML() + artHTML() + topHTML();
+  else                   h += topHTML() + flowHTML() + artHTML();
+  if(ans.length>1) h += `<div class="eyebrow">Ещё по теме</div>` + moreHTML(ans.slice(1,5));
+  if(refs.length){ h+=`<div class="eyebrow">Шпаргалки</div>`;
+    refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
+  if(off && !offBig) h += offHTML(false);
+
+  const nothing = !flows.length && !ans.length && !refs.length && !arts.length && !posShown;
+  if(nothing && FOUND.near.length){
+    h += `<div class="eyebrow">Точного ответа нет · ближе всего</div>`
+      + FOUND.near.map(d => d.t==="flow" ? flowCard(d.id)
+          : d.t==="ans" ? moreHTML([d.ans])
+          : d.t==="ref" ? `<button class="card ref" data-ref="${d.id}"><div class="ct">${esc(d.ref.t)}</div></button>` : "").join("");
   }
-  const FOUND = searchAll(q);
-  const kb = FOUND.kb.slice(0,3);
-  const kbMain = kb.slice(0,1), kbMore = kb.slice(1,3);
-  if(kb.length){
-    h += `<div class="oneline">
-      <div class="ol">${esc(shortAnswer(kb[0][1]))}</div>
-      <div class="op">${esc(kb[0][2])}</div></div>`;
-    h += `<div class="eyebrow">Подробно</div>`;
-    kbMain.forEach((x,i)=>h+=`<div class="kb">
-      ${i===0?`<div class="kbshort">${esc(shortAnswer(x[1]))}<span class="kbpl">${esc(x[2])}</span></div>`:""}
-      <div class="kbq">${esc(x[0])}</div>
-      <div class="kba">${x[1]}</div>
-      ${getMyKB().some(m=>m.q===x[0]) ? `<button class="minibtn del" data-delkb="${esc(x[0])}" style="margin-top:8px">Своя запись · удалить</button>` : ""}
-      ${i===0?"":`<div class="kbp">${esc(x[2])}</div>`}</div>`);
-  }
-  if(kbMore.length){
-    h += `<div class="eyebrow">Смежное</div>`;
-    kbMore.forEach(x=>h+=`<div class="kb" style="border-left-color:var(--ink-3)">
-      <div class="kbq">${esc(x[0])}</div>
-      <div class="kbp">${esc(x[2])}</div></div>`);
-  }
-  const sl = slangHit(q);
-  if(sl.length){
-    h += `<div class="eyebrow">Клиент сказал так — значит нужен${sl.length>1?" (уточните, что именно)":""}</div>`
-       + sl.map(id=>flowCard(id)).join("");
-  }
-  const keys  = FOUND.flows.filter(k=>sl.indexOf(k)<0).slice(0,8);
-  const refs  = FOUND.refs.slice(0,6);
-  const kits  = [];
-  const cases = FOUND.cases.slice(0,3);
-  const qas   = FOUND.quick.slice(0,4);
-  if(qas.length){ h+=`<div class="eyebrow">Короткий ответ</div>`;
-    qas.forEach(x=>h+=`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`); }
-  if(cases.length){ h+=`<div class="eyebrow">Кейсы отдела</div>`;
-    cases.forEach(c=>h+=`<div class="casecard"><div class="cn">${esc(c.t)}</div><div class="cr">${esc(c.r)}</div></div>`); }
-  const nothing = !keys.length && !refs.length && !kits.length && !cases.length
-                  && !qas.length && !kb.length && !arts.length && !sl.length && !posShown;
-  const off = notOurs(FOUND.unknown);
-  if(nothing) logMiss(S.q);
-  if(nothing || off){
-    h += off
-      ? `<div class="block pick" style="border-left-color:var(--alarm)">
-           <h3>Этого у нас нет: ${esc(off.dept)}</h3>
-           <div style="font-size:14.5px;color:var(--ink-2)">${esc(off.text)}</div>
-           <div style="font-size:13px;color:var(--ink-3);margin-top:8px">Скажите это прямо — человек уйдёт с ответом, а не с ощущением, что его отфутболили.</div>
-         </div>`
-      : `<div class="note" style="margin-top:14px">По запросу «${esc(S.q)}» в отделе инструментов ничего не нашлось.
+  /* Запрос без ответа запоминаем, когда продавец перестал печатать, — не каждую букву */
+  missLater(nothing && !offBig ? S.q.trim() : "");
+  if(nothing && !offBig){
+    h += `<div class="note" style="margin-top:14px">По запросу «${esc(S.q)}» в отделе инструментов точного ответа нет.
            Попробуйте сказать иначе — что человек <b>делает</b>: «сверлить бетон», «снять краску», «резать плитку».
-           Если такого у нас правда нет — так и скажите клиенту и запишите запрос ниже, чтобы отдел о нём узнал.</div>`;
+           Если такого у нас правда нет — так и скажите клиенту. Запрос попадёт в журнал (⚙ вверху), отдел о нём узнает.</div>`;
   }
   h += `${S.addKb ? `<div class="kbform">
           <div class="kbfh">Записать ответ в базу</div>
@@ -13918,16 +14316,54 @@ function resultsHTML(){
           <div class="saved" id="nkMsg"></div>
         </div>`
       : `<div class="btnrow" style="margin-top:10px">
+          ${nothing ? "" : `<button class="btn" id="wrongBtn">Не помогло</button>`}
           <button class="btn primary" id="nkAdd">Записать ответ в базу</button>
-        </div>`}`;
-  keys.forEach(k=>h+=flowCard(k));
-  if(refs.length){ h+=`<div class="eyebrow">Шпаргалки</div>`;
-    refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
+        </div>
+        <div class="saved" id="wrongMsg"></div>`}`;
 
   h += `<div style="margin-top:14px"><a class="card ref" style="text-decoration:none" href="${siteSearch(S.q)}" target="_blank" rel="noopener">
     <div class="ct">Найти на сайте Лемана ПРО</div>
     <div class="cd">Открыть поиск «${esc(S.q)}» на saransk.lemanapro.ru</div></a></div>`;
   return h;
+}
+
+/* Короткая строка для карточки: у возражения — сам ответ, у набора — первые позиции списка */
+function ansShort(x){
+  if(x.ref==="vs"){
+    const opts = String(x.a).split("<b>").slice(1).map(o=>stripTags("<b>"+o).split(/[.;]/)[0]);
+    if(opts.length>1){ const t = opts.join(" · "); return t.length>195 ? t.slice(0,190).replace(/[\s,;·]+$/,"")+"…" : t; }
+  }
+  if(x.kind==="obj"){ const m = String(x.a).split(/<b>Ответ:<\/b>/i)[1]; if(m) return shortAnswer(m); }
+  if(x.kind==="kit") return shortAnswer(stripTags(String(x.a).replace(/<\/li>/g,"; ")).replace(/[;\s]+$/,""));
+  return shortAnswer(x.a);
+}
+
+/* Есть ли такое слово в каталоге целиком (не сокращением): «беруши» — есть, «компресор» — нет */
+function artKnows(w){
+  const st = rstem(String(w).toLowerCase().replace(/ё/g,"е"));
+  if(st.length<3) return false;
+  const list = artIndex().get(st.slice(0,3)), all = artList();
+  return !!list && list.some(i=>hasWord(all[i]._n, st));
+}
+
+/* Как спросили: вопрос, поиск товара на полке или просто название */
+const ASK_W = new Set(["чем","как","какой","какая","какое","какие","каким","какую","почему","зачем","можно","сколько",
+  "что","или","лучше","надо","хочу","хочет","нужно","нужен","нужна","нужны","куда","кто"]);
+const ASK_P = ["отлича","разниц","подойд","подход","посовет","подскаж","сравн",
+  "ремонт","гарант","возврат","вернут","верну","сервис","слома","почин","обмен"];
+function queryKind(q, arts){
+  const ws = String(q||"").toLowerCase().replace(/ё/g,"е").split(/[^a-zа-я0-9]+/).filter(Boolean);
+  const verb = w => w.length>=5 && /(ть|ти|чь|ться|тись|ют|ят|ется|ются|ится|ятся|ался|алась|ался|ился|илась)$/.test(w);
+  if(ws.some(w=>ASK_W.has(w) || verb(w) || ASK_P.some(p=>w.indexOf(p)===0))) return "ask";
+  if(arts.length && arts.full && (ws.indexOf("где")>=0 || /\d/.test(q))) return "lookup";
+  return queryGroups(q).length>=4 ? "ask" : "name";
+}
+
+/* Запрос без ответа пишем в журнал, когда продавец перестал печатать */
+let MISS_T = 0;
+function missLater(q){
+  if(MISS_T){ clearTimeout(MISS_T); MISS_T = 0; }
+  if(q) MISS_T = setTimeout(()=>{ MISS_T = 0; if(S.q.trim()===q) logMiss(q); }, 2500);
 }
 
 function viewList(){
@@ -14155,8 +14591,25 @@ function viewSettings(){
       <div style="height:10px"></div>
       <button class="btn primary" id="updBtn" style="width:100%">Проверить обновление</button>
       <div class="saved" id="updMsg"></div>
+      <div class="eyebrow">Что искали и не нашли</div>
+      ${missHTML()}
       <div class="btnrow" style="margin-top:16px"><button class="btn dark" data-close="set">Закрыть</button></div>
     </div></div>`;
+}
+
+/* Журнал промахов: запросы без ответа пишутся сами, «Не помогло» — по кнопке */
+function missHTML(){
+  const m=getMisses(), w=getWrongs();
+  if(!m.length && !w.length) return '<div class="note">Пусто — значит на всё нашёлся ответ. Запросы без ответа и отмеченные кнопкой «Не помогло» появятся здесь сами.</div>';
+  const chips = list => `<div class="chips">${list.map(x=>`<span class="chip" data-missq="${esc(x)}" style="cursor:pointer">${esc(x)}</span>`).join("")}</div>`;
+  return `<div class="note">Приложение само запоминает запросы без ответа и те, где ответ не помог. Отправьте список — эти записи попадут в основную базу для всех.</div>
+    ${m.length?`<div class="eyebrow">Без ответа · ${m.length}</div>${chips(m)}`:""}
+    ${w.length?`<div class="eyebrow">Ответ не помог · ${w.length}</div>${chips(w)}`:""}
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn dark" id="missCopy">Отправить список</button>
+      <button class="btn" id="missClear">Очистить</button>
+    </div>
+    <div class="saved" id="missMsg"></div>`;
 }
 
 /* ---------- возражения ---------- */
@@ -14265,19 +14718,21 @@ function viewKits(){
 
 
 /* ---------- БЫСТРЫЕ ОТВЕТЫ ---------- */
+/* Короткие ответы ищут по всему приложению: по базе, шпаргалкам, «почему так», возражениям */
+function quickHTML(q){
+  q = String(q||"").trim().toLowerCase();
+  const list = q ? searchAll(fixLayout(q)||q).answers.slice(0,12)
+                 : QUICK.map(x=>({q:x[0], a:esc(x[1]), kind:"quick", src:""}));
+  if(!list.length) return '<div class="note">Ничего не нашлось. Скажите иначе — что человек делает или с чем работает — или загляните в «Шпаргалки».</div>';
+  return list.map(x=>`<div class="qa"><div class="qq">${esc(x.q)}</div><div class="qan">${x.kind==="quick" ? x.a : esc(ansShort(x))}</div>${x.kind!=="quick"&&x.src?`<div class="qsrc">${esc(x.src)}</div>`:""}</div>`).join("");
+}
 function viewQuick(){
-  const q=(S.qq||"").trim().toLowerCase();
-  const words=q.split(/\s+/).filter(Boolean);
-  const list = q ? QUICK.filter(x=>words.every(w=>(x[0]+" "+x[1]).toLowerCase().includes(w))) : QUICK;
   return `<div class="search">
       <input id="qq" type="search" placeholder="Клиент спросил на ходу — ищите здесь" value="${esc(S.qq||"")}" autocomplete="off">
     </div>
     <div class="note">Готовые ответы одной строкой, без вопросов и веток. Для случаев, когда ждать некогда.</div>
     <div style="height:10px"></div>
-    <div id="qres">${
-      list.length ? list.map(x=>`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`).join("")
-      : '<div class="note">Ничего не нашлось. Попробуйте другое слово или загляните в «Шпаргалки».'+"</div>"
-    }</div>`;
+    <div id="qres">${quickHTML(S.qq)}</div>`;
 }
 
 /* ---------- КАЛЬКУЛЯТОРЫ ---------- */
@@ -14703,6 +15158,40 @@ function wireCards(){
   });
 }
 
+/* Кнопки внутри выдачи. Выдача перерисовывается на каждую букву без полного render(),
+   поэтому вешаем их и отсюда, и из wire() — иначе после набора или стирания запроса
+   не нажимались «Записать ответ», плитки аллей, недавние запросы и материалы. */
+function wireResults(){
+  app.querySelectorAll("[data-req]").forEach(b=>b.onclick=()=>{
+    pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
+  });
+  app.querySelectorAll("[data-openaisle]").forEach(b=>b.onclick=()=>go({aisle:b.dataset.openaisle}));
+  const ab=document.getElementById("aisleBack"); if(ab) ab.onclick=()=>go({aisle:null});
+  const nkA=document.getElementById("nkAdd");
+  if(nkA) nkA.onclick=()=>go({addKb:true});
+  const nkC=document.getElementById("nkCancel");
+  if(nkC) nkC.onclick=()=>go({addKb:false});
+  const nkS=document.getElementById("nkSave");
+  if(nkS) nkS.onclick=()=>{
+    const g=id=>((document.getElementById(id)||{}).value||"").trim();
+    const q=g("nkq"), a=g("nka");
+    if(!q||!a){ const m=document.getElementById("nkMsg"); if(m) m.textContent="Нужны запрос и ответ"; return; }
+    const list=getMyKB();
+    list.unshift({q:q, a:a, p:g("nkp"), t:(q+" "+g("nkt")).trim(), d:new Date().toLocaleDateString("ru-RU")});
+    setMyKB(list);
+    go({addKb:false, q:q});
+  };
+  app.querySelectorAll("[data-delkb]").forEach(b=>b.onclick=()=>{
+    setMyKB(getMyKB().filter(x=>x.q!==b.dataset.delkb)); render();
+  });
+  const wb=document.getElementById("wrongBtn");
+  if(wb) wb.onclick=()=>{
+    logWrong(S.q);
+    const m=document.getElementById("wrongMsg");
+    if(m){ m.textContent="Записал в журнал (⚙) — разберём и допишем"; clearTimeout(m._t); m._t=setTimeout(()=>m.textContent="",2800); }
+  };
+}
+
 function wire(){
   const q=document.getElementById("q");
   if(q){
@@ -14719,7 +15208,7 @@ function wire(){
     let paintT = 0;
     const paint = () => { paintT = 0;
       const box=document.getElementById("results");
-      if(box){ box.innerHTML = resultsHTML(); wireCards(); } };
+      if(box){ box.innerHTML = resultsHTML(); wireCards(); wireResults(); } };
     /* input и keyup приходят на один и тот же символ — считаем только когда текст правда изменился */
     const upd = () => {
       if(q.value === S.q) return;
@@ -14751,23 +15240,7 @@ function wire(){
     setTimeout(()=>{ try{di.focus();}catch(e){} }, 120);
   }
 
-  const nkA=document.getElementById("nkAdd");
-  if(nkA) nkA.onclick=()=>go({addKb:true});
-  const nkC=document.getElementById("nkCancel");
-  if(nkC) nkC.onclick=()=>go({addKb:false});
-  const nkS=document.getElementById("nkSave");
-  if(nkS) nkS.onclick=()=>{
-    const g=id=>((document.getElementById(id)||{}).value||"").trim();
-    const q=g("nkq"), a=g("nka");
-    if(!q||!a){ const m=document.getElementById("nkMsg"); if(m) m.textContent="Нужны запрос и ответ"; return; }
-    const list=getMyKB();
-    list.unshift({q:q, a:a, p:g("nkp"), t:(q+" "+g("nkt")).trim(), d:new Date().toLocaleDateString("ru-RU")});
-    setMyKB(list);
-    go({addKb:false, q:q});
-  };
-  app.querySelectorAll("[data-delkb]").forEach(b=>b.onclick=()=>{
-    setMyKB(getMyKB().filter(x=>x.q!==b.dataset.delkb)); render();
-  });
+  wireResults();
 
   const mic=document.getElementById("micBtn");
     if(mic){
@@ -14815,23 +15288,14 @@ function wire(){
   if(qqi){
     const upd=()=>{ S.qq=qqi.value;
       const box=document.getElementById("qres");
-      if(box){
-        const q=S.qq.trim().toLowerCase(), w=q.split(/\s+/).filter(Boolean);
-        const list=q?QUICK.filter(x=>w.every(v=>(x[0]+" "+x[1]).toLowerCase().includes(v))):QUICK;
-        box.innerHTML = list.length ? list.map(x=>`<div class="qa"><div class="qq">${esc(x[0])}</div><div class="qan">${esc(x[1])}</div></div>`).join("")
-          : '<div class="note">Ничего не нашлось. Попробуйте другое слово или загляните в «Шпаргалки».</div>';
-      }};
+      if(box) box.innerHTML = quickHTML(S.qq);
+    };
     const updQ = () => { if(qqi.value===S.qq) return; upd(); };
     qqi.addEventListener("input",updQ); qqi.addEventListener("keyup",updQ);
   }
   app.querySelectorAll("[data-shelf]").forEach(inp=>inp.oninput=e=>{
     store.set("shelf:"+inp.dataset.shelf, e.target.value);
   });
-  app.querySelectorAll("[data-req]").forEach(b=>b.onclick=()=>{
-    pushRecent(b.dataset.req); go({q:b.dataset.req, aisle:null});
-  });
-  app.querySelectorAll("[data-openaisle]").forEach(b=>b.onclick=()=>go({aisle:b.dataset.openaisle}));
-  const ab=document.getElementById("aisleBack"); if(ab) ab.onclick=()=>go({aisle:null});
   app.querySelectorAll("[data-add]").forEach(el=>el.onclick=()=>{
     const v=el.dataset.add;
     const i=S.kit.indexOf(v);
@@ -14963,12 +15427,18 @@ function wire(){
 
   const mc=document.getElementById("missCopy");
   if(mc) mc.onclick=()=>{
-    const txt="Не нашлось в приложении ЦЕХ:\n"+getMisses().map(x=>"— "+x).join("\n");
+    const m=getMisses(), w=getWrongs();
+    const txt="ЦЕХ, версия "+APP_VERSION+" · что искали в зале"
+      +(m.length?"\n\nНе нашлось:\n"+m.map(x=>"— "+x).join("\n"):"")
+      +(w.length?"\n\nОтвет не помог:\n"+w.map(x=>"— "+x).join("\n"):"");
     if(navigator.share){ navigator.share({text:txt}).catch(()=>copy(txt,"missMsg","Скопировано")); }
     else copy(txt,"missMsg","Список скопирован");
   };
   const mcl=document.getElementById("missClear");
   if(mcl) mcl.onclick=()=>{ clearMisses(); render(); };
+  app.querySelectorAll("[data-missq]").forEach(b=>b.onclick=()=>{
+    selTab("ask"); go({settings:false, tab:"ask", flow:null, q:b.dataset.missq, aisle:null});
+  });
 
   const ca=document.getElementById("caseAdd");
   if(ca) ca.onclick=()=>{
@@ -15026,6 +15496,9 @@ const fv=document.getElementById("footVer");
 if(fv) fv.textContent = "Версия " + APP_VERSION + " · " + APP_DATE + " · каталог " + artList().length + " позиций";
 
 render();
+
+/* Индексы поиска строим заранее, пока продавец смотрит на экран, — тогда первая буква не тормозит */
+setTimeout(()=>{ try{ searchIndex(); artIndex(); }catch(e){} }, 1200);
 
 </script>
 
