@@ -9980,7 +9980,7 @@ function artExpand(q){
   return out;
 }
 /* Размеры из запроса. «2 метра» ищем как «2М» и как 2000 мм — но не как «8ММ» у «РУЛЕТКА 2МX8ММ»;
-   «60 см» — как 600 мм. Метки «@м» понимает hasSize. */
+   «60 см» — как 600 мм. Метки единиц («@м», «@кг», «@г») понимает sizeScore. */
 function artSizes(qn){
   const out=[];
   const re=/(\d+(?:[.,]\d+)?)\s*([a-zа-я]+)?/g; let m;
@@ -9988,8 +9988,12 @@ function artSizes(qn){
     const d=m[1].replace(".",","), u=m[2]||"";
     const n=parseFloat(m[1].replace(",","."));
     const metre = /^(м|метр|метра|метров|метре)$/.test(u);
-    const d0 = metre ? d+"@м" : d;
+    const kg = /^(кг|килограмм\S*|кило)$/.test(u), gr = /^(г|гр|грамм\S*)$/.test(u);
+    const d0 = metre ? d+"@м" : kg ? d+"@кг" : gr ? d+"@г" : d;
     if(out.indexOf(d0)<0) out.push(d0);
+    /* каталог пишет вес и так, и так: «КУВАЛДА 1,5КГ» и «КУВАЛДА 2000Г» */
+    if(kg){ const g=String(Math.round(n*1000))+"@г"; if(out.indexOf(g)<0) out.push(g); }
+    if(gr && n>=100){ const k=String(+(n/1000).toFixed(2)).replace(".",",")+"@кг"; if(out.indexOf(k)<0) out.push(k); }
     if(metre && n<=10){ const mm=String(Math.round(n*1000)); if(out.indexOf(mm)<0) out.push(mm); }
     if(/^(см|сантиметр\S*)$/.test(u)){ const mm=String(Math.round(n*10)); if(out.indexOf(mm)<0) out.push(mm); }
   }
@@ -10011,22 +10015,35 @@ function hasWord(hay, st){
 }
 /* Число в названии как отдельный размер: «5» есть в «5МX18ММ», но нет в «50М» и в «12,5ММ».
    Точка после сокращения («АЛМ.230Х») — не десятичная, «230» там есть. */
-function hasSize(hay, d){
-  const metre = /@м$/.test(d);
-  if(metre) d = d.slice(0,-2);
-  const forms = d.indexOf(",")>=0 ? [d, d.replace(",",".")] : [d];
+/* Сколько весит совпадение размера: 6 — размер в миллиметрах или «8Х160», 5 — просто число,
+   2 — вес, 0 — нет. Тройка в «МР-3» (марка электрода) уступает «3ММ» и «D=3,0».
+   «Электроды 2,5» — это 2,5 мм, а не пачка «2,5КГ»: число без единицы с весом в названии
+   совпадает слабее. Но совпадает: «молоток 500» — это и есть 500 г.
+   «2,5 кг» в запросе совпадает только с весом. Целое «3» ловит и «3,0». */
+function sizeScore(hay, d){
+  const at = d.indexOf("@"), unit = at<0 ? "" : d.slice(at+1);
+  if(at>=0) d = d.slice(0, at);
+  const metre = unit==="м";
+  const forms = d.indexOf(",")>=0 ? [d, d.replace(",",".")] : [d, d+",0", d+".0"];
+  let best = 0;
   const dig = c => c>="0" && c<="9", sep = c => c==="." || c===",";
   for(let f=0; f<forms.length; f++){
     const x = forms[f];
     let i = hay.indexOf(x);
     while(i>=0){
       const b = hay.charAt(i-1), bb = hay.charAt(i-2), e = hay.charAt(i+x.length), ee = hay.charAt(i+x.length+1);
-      if(!dig(b) && !(sep(b) && dig(bb)) && !dig(e) && !(sep(e) && dig(ee))
-         && (!metre || (e==="м" && ee!=="м"))) return true;
+      const wu = (hay.slice(i+x.length).match(/^ ?([а-яa-z]+)/)||["",""])[1];   /* единица после числа */
+      const weight = wu==="кг" || wu==="г";
+      if(!dig(b) && !(sep(b) && dig(bb)) && !dig(e) && !(sep(e) && dig(ee))){
+        const dim = /^(мм|mm)/.test(wu) || b==="=" || (/^[xх]/.test(wu) && !/[a-zа-я]/.test(b));   /* «2» в «PH2X25» — не размер */
+        const sc = metre ? (e==="м" && ee!=="м" ? 6 : 0) : unit ? (wu===unit ? 6 : 0) : weight ? 2 : dim ? 6 : 5;
+        if(sc>best) best = sc;
+        if(best===6) return 6;
+      }
       i = hay.indexOf(x, i+1);
     }
   }
-  return false;
+  return best;
 }
 /* Слова запроса группами: само слово, как его пишет каталог, его сокращение, марка латиницей.
    Совпала любая форма — слово засчитано. */
@@ -10087,7 +10104,7 @@ function artSearch(q, limit, live){
     let s = hit*4 + Math.round(hit/groups.length*10);
     if(live) groups.forEach(g=>{ if(one(x, g[0])) s+=2; });     /* слово клиента дословно — выше синонима */
     if(groups.some(g=>g.some(st=>n.indexOf(st)===0))) s+=6;   /* название начинается с искомого слова */
-    sizes.forEach(d=>{ if(hasSize(n,d)) s+=5; });
+    sizes.forEach(d=>{ s += sizeScore(n,d); });
     if(x.top) s+=1;
     return s;
   };
@@ -12271,7 +12288,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 const APP_DATE = "04.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
