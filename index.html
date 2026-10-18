@@ -16291,7 +16291,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "73";
+const APP_VERSION = "74";
 const APP_DATE = "18.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -18035,13 +18035,13 @@ function fixLayout(q){
    только само слово («краск=» не должен поймать «краскопульт»).
    Список правьте под свой магазин. */
 const NOT_OURS = [
- [["брошюр","переплет","дырокол","ламинир","канцеляр","скоросшиват","файлик"],
+ [["брошюр","переплет","ламинир","канцеляр","скоросшиват","файлик"],
   "Канцелярия", "Брошюровщиков, переплёта и канцтоваров в строительном магазине нет — это канцелярский магазин."],
  [["обои","обойн","колеровк","эмал","шпаклевк","штукатурк","цемент","пескобетон","саморавн","краск=","грунтовк","затирк"],
   "Отделочные материалы и краски", "Сам материал — соседний отдел. У нас инструмент под него: шпатели, правила, миксеры, краскопульты."],
  [["смесител","унитаз","раковин","сифон","полотенцесушител","бачок","биде","инсталляц","ванн=","душев","водонагреват"],
   "Сантехника", "Сантехника — другой отдел. У нас инструмент и фитинги под пневматику, не под воду."],
- [["розетк","выключател","щиток","лампочк","светильник","люстр","бра","изолент","фонар","автомат дифф","патрон е27"],
+ [["розетк","выключател","электрощит","лампочк","светильник","люстр","бра","изолент","фонар","автомат дифф","патрон е27"],
   "Электротовары и свет", "Электрику и свет держит другой отдел. У нас инструмент электрика: стрипперы, пресс-клещи, кабелерезы."],
  [["удлинител"],
   "Электротовары", "Удлинитель-переноску и катушку держит отдел электротоваров. У нас удлинители только для оснастки: SDS, биты, головки."],
@@ -18082,6 +18082,152 @@ function notOurs(q){
     }
   }
   return null;
+}
+
+/* ============ Три частых ситуации у полки ============
+   1. Возврат, обмен, гарантия: «клиент хочет вернуть болгарку» — первым правило, а не болгарки.
+   2. «Не знает, что взять»: с названным товаром — подбор по шагам первым, без товара — вопросы клиенту.
+   3. Чего в зале нет: чужая марка (Bosch, DeWalt) и товар, которого не держим (пескоструй), —
+      честное «нет» и ближайшее, что есть, с кодами. */
+
+/* --- 1. сервисный вопрос --- */
+const SVC_RET = /(^|[^а-я])(верн[уеё]|вернут|возврат|возвращ|сдать|сдам|сдаст|сдаю|обмен|обменя|передумал|не подош)/;
+const SVC_RET_NOT = /(блеск|цвет|остро|форм|натяж|на место|в паз|резьб)/;          /* «вернуть блеск», «вернуть цвет пластику» — полировка, не возврат */
+const SVC_GAR = /(^|[^а-я])(гаранти|сервис|в ремонт|отремонт|ремонтир|почин|сломал|сломан|сгорел)/;
+const SVC_GAR_NOT = /(болт|винт|шпильк|саморез|шуруп|гвозд|метчик|ключ в замк|кран)/;   /* «сломался болт» — экстрактор (CTX_SYN) */
+const SVC_TXT = /гаранти|негарант|сервисн|100 дней|45 дней|талон|ключ-карт|возврат (исправн|денег|товара)/i;
+function serviceIntent(q){
+  const s = String(q||"").toLowerCase().replace(/ё/g,"е");
+  if(SVC_GAR.test(s) && !SVC_GAR_NOT.test(s)) return "gar";
+  if(SVC_RET.test(s) && !SVC_RET_NOT.test(s)) return "ret";
+  return "";
+}
+function refRow(id, i){
+  const R = REF.find(r=>r.id===id), x = R && R.rows[i];
+  return x ? {q:x[0], a:x[1], p:"", src:"Шпаргалка «"+R.t+"»", ref:R.id} : null;
+}
+/* возврат: правило 100 дней всегда первым; поломка: найденный случай (зима, перегрев), потом сроки ремонта и талон */
+const SVC_CORE = {ret:[0,1,2], gar:[4,3,6,8]};
+const SVC_W = /^(гарант|сломал|сломан|сервис|ремонт|почин|верн|возвра|сда|обмен|клиент|товар|можн|хоч|случа)/;
+function svcAnswers(kind, ans, more, q){
+  const isSvc = a => SVC_TXT.test(stripTags(a.q+" "+a.a+" "+(a.src||"")));
+  /* среди сервисных ответов выше тот, чей заголовок называет случай из запроса («после зимы» → «Зима»),
+     правило из шпаргалки — выше рассказа «почему так»; при поломке правило 100 дней — не первым */
+  const ws = queryGroups(q||"").map(g=>g.st).filter(st=>st.length>=3 && !SVC_W.test(st));
+  const where = /(^|[^а-я])(куда|где|адрес|телефон)/.test(String(q||"").toLowerCase());   /* «куда отвезти в ремонт» — сервисные центры */
+  const score = a => { const t = String(a.q||"").toLowerCase().replace(/ё/g,"е");
+    return (where && /Сервисные центры/.test(a.src||"") ? 5 : 0) + (ws.some(st=>t.indexOf(st)>=0) ? 3 : 0) + (a.ref ? 1 : 0) + (/негарант/i.test(stripTags(a.a)) ? 1 : 0)
+      - (kind==="gar" && /100 дней|возврат исправн/i.test(a.q) ? 6 : 0); };
+  const found = ans.concat(more.filter(a=>ans.indexOf(a)<0)).filter(isSvc)
+    .map((a,i)=>[a, score(a), i]).sort((x,y)=>y[1]-x[1] || x[2]-y[2]).map(x=>x[0]);
+  if(kind==="gar" && where && !found.some(a=>/Сервисные центры/.test(a.src||"")))
+    found.unshift(...[0,1].map(i=>refRow("service", i)).filter(Boolean));
+  const core = SVC_CORE[kind].map(i=>refRow("garant", i)).filter(Boolean);
+  const top = [];
+  const add = a => { if(a && !top.some(t=>t.q===a.q)) top.push(a); };
+  if(kind==="ret"){ add(core[0]); found.forEach(add); core.slice(1).forEach(add); }
+  else { found.forEach(add); core.forEach(add); }
+  return top.concat(ans.filter(a=>!isSvc(a)));
+}
+/* «вернуть блеск пластику» — слово «вернуть» не про возврат: правило 100 дней уходит вниз */
+function svcDemote(q, ans){
+  const s = String(q||"").toLowerCase().replace(/ё/g,"е");
+  if(!(SVC_RET.test(s) && SVC_RET_NOT.test(s))) return ans;
+  const ret = a => /возврат исправн|100 дней|ключ-карт/i.test(a.q);
+  return ans.filter(a=>!ret(a)).concat(ans.filter(ret));
+}
+
+/* --- 2. клиент не знает, что взять --- */
+const DUNNO_RE = /(не знает|не знаю|не понима|не разбира|не уверен|не определил|посоветуй|посоветовать|подскажите,? как(ой|ую|ое)|как(ой|ую|ое) (лучше|выбрать|взять)|что (лучше|выбрать) |помоги\S* выбрать|помочь выбрать)/;
+function dunnoIntent(q){
+  const s = " "+String(q||"").toLowerCase().replace(/ё/g,"е")+" ";
+  return DUNNO_RE.test(s) && !/\sили\s/.test(s);        /* «что лучше: 125 или 180» — развилка, на неё есть ответ */
+}
+function dunnoHTML(flows){
+  const real = flows.filter(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE);
+  if(real.length) return `<div class="note" style="margin-bottom:10px"><b>Клиент не знает, что выбрать</b> — не перечисляйте модели: откройте подбор и задайте его вопросы вслух. В конце будет, что взять, и коды из зала.</div>`;
+  const q5 = REF.find(r=>r.id==="quest");
+  return `<div class="block pick"><h3>Клиент не знает, что ему нужно</h3>
+      <div style="font-size:14.5px;color:var(--ink-2)">Спросите не «какой инструмент», а что человек делает и из чего.${q5 ? "<br>"+q5.rows.slice(0,5).map(r=>`<b>${esc(r[0])}</b> ${r[1]}`).join("<br>") : ""}</div>
+      ${q5 ? `<button class="minibtn" data-ref="quest" style="margin-top:9px">Вся шпаргалка</button>` : ""}</div>
+    <div class="eyebrow">Помощь в разговоре</div>` + helperFlows().map(k=>flowCard(k)).join("");
+}
+
+/* --- 3а. марки, которых в зале нет --- */
+const BRAND_NO = [
+ [/(^|[^a-zа-я])(bosch|бош|боша|бошевск\S*)(?![a-zа-я])/, "Bosch", "pro"],
+ [/dewalt|де ?вол?ь?т|девальт/, "DeWalt", "pro"],
+ [/metabo|метабо/, "Metabo", "pro"],
+ [/hikoki|hitachi|хитачи|хикоки/, "HiKOKI (бывший Hitachi)", "pro"],
+ [/milwaukee|милуоки|милвоки/, "Milwaukee", "pro"],
+ [/hilti|хилти/, "Hilti", "pro"],
+ [/festool|фестул/, "Festool", "pro"],
+ [/(^|[^a-z])aeg(?![a-z])/, "AEG", "pro"],
+ [/ryobi|риоби|рёби/, "Ryobi", "mid"],
+ [/stanley|стэнли|стенли/, "Stanley", "mid"],
+ [/(^|[^a-zа-я])(зубр|zubr)(?![a-zа-я])/, "Зубр", "mid"],
+ [/greenworks|гринворкс/, "Greenworks", "mid"],
+ [/black ?(and |& |\+ )?decker|бл[эе]к ?(энд )?декк?ер/, "Black+Decker", "low"],
+ [/sturm|штурм/, "Sturm", "low"],
+ [/(^|[^a-zа-я])(hammer|хаммер)(?![a-zа-я])/, "Hammer", "low"],
+ [/ingco|инко/, "Ingco", "low"],
+ [/karcher|kärcher|керхер|кёрхер|карчер/, "Kärcher", "wash"],
+ [/svarog|сварог/, "Сварог", "weld"]
+];
+const BRAND_NEAR = {
+  pro:  {t:"По классу ближе всего Makita (профессиональный класс) и ELITECH HD — профессиональная линейка Elitech.", b:[["Makita в зале","makita"],["ELITECH HD в зале","ehd"]]},
+  mid:  {t:"По классу ближе всего Elitech, Patriot и Ресанта — средний класс.", b:[["Elitech","elitech"],["Patriot","patriot"],["Ресанта","ресанта"]]},
+  low:  {t:"По цене ближе всего Dexter — собственная марка сети: возврат год, с Ключ-картой два, — а ещё DEKO и Zitrek.", b:[["Dexter","dexter"],["DEKO","deko"],["Zitrek","zitrek"]]},
+  wash: {t:"Мойки в зале — Huter, Elitech, DEKO, Ресанта: сравнивают по барам и литрам в час, а не по марке.", b:[["Мойки в зале","минимойка"]]},
+  weld: {t:"Сварочные аппараты в зале — Ресанта, Elitech, FoxWeld и другие: выбирают по току и сети.", b:[["Сварочные инверторы","сварочный инвертор"]]}
+};
+function foreignBrand(q){
+  const s = String(q||"").toLowerCase().replace(/ё/g,"е");
+  for(const r of BRAND_NO){
+    if(!r[0].test(s)) continue;
+    const rest = s.replace(r[0], " ").replace(/\s+/g," ").trim();
+    return {name:r[1], cls:r[2], rest: queryGroups(rest).length ? rest : ""};
+  }
+  return null;
+}
+function brandNoHTML(fb){
+  const n = BRAND_NEAR[fb.cls];
+  const akk = fb.cls==="pro"||fb.cls==="mid"||fb.cls==="low";
+  return `<div class="block pick" style="border-left-color:var(--alarm)">
+      <h3>Марки ${esc(fb.name)} в зале нет</h3>
+      <div style="font-size:14.5px;color:var(--ink-2)">${n.t}${akk?` Аккумуляторы ${esc(fb.name)} к другим маркам не подойдут: если у клиента уже есть батареи ${esc(fb.name)}, скажите прямо — корпус под них берут там, где продают эту марку.`:""}${fb.rest?` Ниже — что есть в зале по запросу «${esc(fb.rest)}».`:""}</div>
+      <div class="btnrow" style="margin-top:9px">${n.b.map(b=>`<button class="minibtn" data-req="${esc(b[1])}">${esc(b[0])}</button>`).join("")}</div>
+    </div>`;
+}
+
+/* --- 3б. товар, которого в зале нет: свои строки плюс «нет в зале» из MAIN_Q --- */
+const ABSENT = [
+  [/пескостру/, ["щетка чашка ушм", "круг лепестк"], "Пескоструйного аппарата в зале нет — его заказывают на сайте. Ржавчину и старую краску в зале снимают щёткой-чашкой и лепестковым кругом на болгарку."],
+  [/бетономеш/, ["миксер строительный", "емкость строит 90л"], "Бетономешалки в зале нет — её заказывают на сайте. Замес на мешок-два делают строительным миксером в ёмкости 60–90 л."],
+  [/плазм/, ["круг отрезной по металлу"], "Плазмореза в зале нет — его заказывают на сайте. Металл в зале режут болгаркой с отрезным кругом."],
+  [/аргон|(^|[^a-z])tig(?![a-z])/, ["сварочный инвертор"], "Аппаратов аргонодуговой сварки (TIG) в зале нет — их заказывают на сайте. В зале — инверторы MMA и полуавтоматы."],
+  [/виброплит/, [], "Виброплиты в зале нет — её заказывают на сайте."],
+  [/паяльн\S* станц/, ["паяльник цифр"], "Паяльной станции в зале нет. Ближе всего — паяльник с цифровой регулировкой температуры."]
+];
+function absentFor(q){
+  const s = String(q||"").toLowerCase().replace(/ё/g,"е");
+  if(/пилк|насадк|полотн/.test(s)) return null;             /* «погружная пилка» к реноватору — есть, это не погружная пила */
+  const a = ABSENT.find(r=>r[0].test(s)) || MAIN_Q.find(r=>r[2] && /нет/.test(r[2]) && r[0].test(s));
+  if(!a) return null;
+  const xs = [];
+  a[1].forEach(f=>(f instanceof RegExp ? artList().filter(x=>f.test(x.n)).slice(0,2) : artSearch(f, 2, true))
+    .forEach(x=>{ if(xs.length<4 && !xs.some(y=>y.a===x.a)) xs.push(x); }));
+  return {note:a[2], items:xs};
+}
+function absentHTML(ab){
+  const i = ab.note.search(/[.!] /), head = i>0 ? ab.note.slice(0, i+1) : ab.note, tail = i>0 ? ab.note.slice(i+2) : "";
+  return `<div class="block pick" style="border-left-color:var(--alarm)">
+      <h3>${esc(head)}</h3>
+      ${tail?`<div style="font-size:14.5px;color:var(--ink-2)">${esc(tail)}</div>`:""}
+      ${ab.items.map(x=>`<div class="artc${x.top?" top":""}" style="margin-top:8px">
+        <div class="artn">${esc(x.n)}</div>
+        <div class="artrow"><span class="artlm">ЛМ ${esc(x.a)}</span><span class="artad">${esc(artAddr(x))}</span></div></div>`).join("")}
+    </div>`;
 }
 
 function resultsHTML(){
@@ -18218,8 +18364,11 @@ function resultsHTML(){
 
   /* не та раскладка: ищем по исправленному и говорим об этом */
   const lay = fixLayout(q);
-  const qx = lay || q;
+  let qx = lay || q;
   if(lay) h += `<div class="note" style="margin-bottom:10px">Похоже, клавиатура стояла на латинице — ищу «${esc(lay)}».</div>`;
+  /* чужая марка: «шуруповёрт бош» — ищем шуруповёрт, а про марку говорим прямо */
+  const fb = foreignBrand(qx);
+  if(fb && fb.rest) qx = fb.rest;
 
   const FOUND = searchAll(qx);
   /* Опечатку, которую простил общий поиск, правим и для каталога — но только если такого слова
@@ -18231,10 +18380,15 @@ function resultsHTML(){
   if(FOUND.fuzzyOnly && !Object.keys(fixes).length && arts.length){ FOUND.flows=[]; FOUND.answers=[]; FOUND.refs=[]; FOUND.near=[]; }
   const sl    = slangHit(qx);
   const flows = sl.concat(FOUND.flows.filter(k=>sl.indexOf(k)<0)).slice(0, arts.full ? 2 : 4);
-  const ans   = FOUND.answers;
+  let ans     = FOUND.answers;
   const refs  = FOUND.refs.slice(0,4);
   const off   = notOurs(qx);
   const offBig = !!(off && off.strong);
+  /* возврат и гарантия — первым правило; «не знает, что взять» — подбор; чего нет в зале — так и говорим */
+  const svc = offBig ? "" : serviceIntent(qx);
+  ans = svc ? svcAnswers(svc, ans, FOUND.more||[], qx) : svcDemote(qx, ans);
+  const dunno = !svc && !offBig && dunnoIntent(qx);
+  const absent = offBig ? null : absentFor(qx);
 
   const artHTML = () => !arts.length ? "" :
     `<div class="eyebrow">${arts.loose ? "Товар в зале · по главному слову" : arts.nearSize ? "Такого размера в зале нет · ближайшие" : "Товар в зале · точный адрес"}</div>`
@@ -18304,14 +18458,19 @@ function resultsHTML(){
     const known0 = idx0.some(i=>hasWord(all0[i]._n, st0));
     if(w0 && !known0 && String(ans[0].q||"").toLowerCase().replace(/ё/g,"е").indexOf(rstem(w0))>=0) kind = "ask";
   }
+  if(svc) kind = "ask";
+  else if(dunno && flows.some(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE)) kind = "name";
   if(offBig) h += offHTML(true);
+  if(fb) h += brandNoHTML(fb);
+  if(absent) h += absentHTML(absent);
+  if(dunno) h += dunnoHTML(flows);
   if(kind==="lookup")    h += artHTML() + flowHTML() + topHTML();
   else if(kind==="name") h += flowHTML() + artHTML() + topHTML();
   else                   h += topHTML() + flowHTML() + artHTML();
   /* шире запроса: под эту работу (найденный подбор), ещё по теме, тема целиком, ещё спрашивают */
   /* тема запроса задаёт, какой подбор раскрыть: «забор» — сварка и покраска, а не «забор воды» мойкой */
-  const topic = offBig ? null : topicFor(qx);
-  const kitFlow = offBig ? null : topic ? flows.find(k=>topic.f.indexOf(k)>=0) : flows.find(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE);
+  const topic = offBig || svc ? null : topicFor(qx);
+  const kitFlow = offBig || svc ? null : topic ? flows.find(k=>topic.f.indexOf(k)>=0) : flows.find(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE);
   /* товар уже показан выше — основной товар в «под эту работу» не повторяем */
   const noMain = arts.length>0;
   const wkey = wideKey(kitFlow, noMain, topic);
@@ -18326,7 +18485,7 @@ function resultsHTML(){
     refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
   if(off && !offBig) h += offHTML(false);
 
-  const nothing = !flows.length && !ans.length && !refs.length && !arts.length && !posShown && !topic;
+  const nothing = !flows.length && !ans.length && !refs.length && !arts.length && !posShown && !topic && !fb && !absent && !dunno;
   if(nothing && FOUND.near.length){
     h += `<div class="eyebrow">Точного ответа нет · ближе всего</div>`
       + FOUND.near.map(d => d.t==="flow" ? flowCard(d.id)
