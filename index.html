@@ -10293,7 +10293,15 @@ function artSearch(q, limit, live){
   const was = ART_HALL; ART_HALL = true;
   try{ return artSearch0(q, limit, live); } finally { ART_HALL = was; }
 }
+/* обычный поиск не нашёл всё — пробуем модель с ценника в любом написании */
 function artSearch0(q, limit, live){
+  const r = artSearch1(q, limit, live);
+  if(!live || ART_FOR_INNER || (r.length && r.full && !r.loose)) return r;
+  const mh = modelHits(q);
+  if(!mh.length) return r;
+  const out = mh.slice(0, limit||8); out.full = true; out.model = true; return out;
+}
+function artSearch1(q, limit, live){
   const qn = q.toLowerCase().replace(/ё/g,"е");
   /* код с ценника читают группами («89 341 904») или называют хвост («…1904»): только цифры — это код */
   const dig = /^\s*(лм|lm)?[\s\d-]+$/.test(qn) ? qn.replace(/[^\d]/g,"") : "";
@@ -10303,7 +10311,7 @@ function artSearch0(q, limit, live){
   }
   const artQ = dig.length>=6 ? [dig] : (qn.match(/\d{6,}/g)||[]);
   if(artQ.length){
-    const byArt = artList().filter(x=>artQ.some(d=>x.a.indexOf(d)===0));
+    const seenC = new Set(), byArt = artList().filter(x=>artQ.some(d=>x.a.indexOf(d)===0) && !seenC.has(x.a) && seenC.add(x.a));
     if(byArt.length){ const r=byArt.slice(0, limit||8); r.full=true; return r; }
   }
   if(live && !ART_FOR_INNER){
@@ -16342,7 +16350,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "75";
+const APP_VERSION = "76";
 const APP_DATE = "18.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -18281,6 +18289,155 @@ function absentHTML(ab){
     </div>`;
 }
 
+/* ============ Модель с ценника, сравнение двух позиций, числа словами ============ */
+
+/* --- модель в любом написании: «gx-48», «мшу10-125», «п 32», «ддф453» (DDF453 по-русски) ---
+   Ключ модели — слово с цифрой без дефисов и точек, кириллица-двойник латиницей (М=M, Н=H, Р=P…);
+   короткое буквенное слово перед ним склеивается: «МШУ 10-125Э» → «mшy10125э». Запрос сверяется
+   по началу ключа, и ещё раз — кириллица по звучанию («ддф» → «ddf»). */
+const LOOK_LAT = {"а":"a","в":"b","е":"e","к":"k","м":"m","н":"h","о":"o","р":"p","с":"c","т":"t","у":"y","х":"x"};
+const PHON_LAT = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"c","ч":"ch","ш":"sh","щ":"sch","ы":"y","э":"e","ю":"yu","я":"ya"};
+const lookLat = s => s.replace(/[авекмнорстух]/g, c=>LOOK_LAT[c]);
+const phonLat = s => s.replace(/[а-я]/g, c=>PHON_LAT[c]||"");
+const mkCompact = s => s.toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]/g,"");
+const MK_UNIT = /^\d+([.,]\d+)?(мм|см|м|в|вт|квт|ач|дж|кг|г|гр|л|бар|шт|нм|а|мин|мл|лч|лмин)$/;
+let MODEL_KEYS = null;
+function modelKeys(){
+  if(MODEL_KEYS) return MODEL_KEYS;
+  MODEL_KEYS = artList().map(x=>{
+    const ts = x._n.split(/\s+/), keys = [];
+    ts.forEach((t,i)=>{
+      const c = mkCompact(t);
+      if(!/\d/.test(c) || MK_UNIT.test(c)) return;
+      if(/[a-zа-я]/.test(c) && c.length>=3) keys.push(lookLat(c));
+      const p = mkCompact(ts[i-1]||"");
+      if(/^[a-zа-я]{1,4}$/.test(p) && /^\d/.test(c)) keys.push(lookLat(p+c));     /* «МШУ 10-125Э», «ГУ 350РЭ» */
+    });
+    return keys;
+  });
+  return MODEL_KEYS;
+}
+function modelTokens(q){
+  const ts = String(q||"").toLowerCase().replace(/ё/g,"е").split(/\s+/).filter(Boolean), out = [];
+  for(let i=0;i<ts.length;i++){
+    let c = mkCompact(ts[i]);
+    /* «мшу 10 125» — буквы и цифры раздельно: склеиваем */
+    if(/^[a-zа-я]{1,4}$/.test(c) && /^\d/.test(mkCompact(ts[i+1]||""))){ while(i+1<ts.length && /^[\d-]+[a-zа-я]?$/.test(ts[i+1])) c += mkCompact(ts[++i]); }
+    if(c.length>=3 && /\d/.test(c) && /[a-zа-я]/.test(c) && !MK_UNIT.test(c)) out.push(c);
+  }
+  return out;
+}
+function modelHits(q){
+  const toks = modelTokens(q); if(!toks.length) return [];
+  const keys = modelKeys(), all = artList(), out = [], seen = new Set();
+  const scan = v => { let n = 0; all.forEach((x,i)=>{ if(!seen.has(x.a) && keys[i].some(k=>k.indexOf(v)===0)){ seen.add(x.a); out.push(x); n++; } }); return n; };
+  /* сначала буквы-двойники («П-32» — это П); по звучанию («ддф» → «ddf») — только если так ничего нет */
+  toks.forEach(t=>{ if(!scan(lookLat(t)) && /[а-я]{3}/.test(t)) scan(phonLat(t)); });
+  return out;
+}
+
+/* --- сравнение двух позиций: «чем отличается dkg600 от gx-48», «ddf453 или cs2003sl», два кода ЛМ --- */
+const CMP_RE = [
+  /^(?:чем|в чем|что)\s+(?:отлича\S*|разница)\s+(.+?)\s+(?:от|и|с|между)\s+(.+?)\??$/,
+  /^(?:разница|отличи\S*|сравни\S*)\s+(?:между\s+)?(.+?)\s+(?:и|с|от|или)\s+(.+?)\??$/,
+  /^(.+?)\s+(?:или|либо|vs|против)\s+(.+?)\??$/
+];
+function cmpSide(s){
+  s = s.replace(/^(что|какой|какая|какую|кто)\s+(лучше|выбрать|взять|брать)\s+/, "").replace(/^(между|модель|модели|лм)\s+/, "").trim();
+  if(!/\d{8}/.test(s) && !modelTokens(s).length) return null;            /* сторона должна называть конкретную модель или код */
+  const r = artSearch(s, 3, true);
+  return r.length && r.full ? r[0] : null;
+}
+function compareFor(q){
+  const s = String(q||"").toLowerCase().replace(/ё/g,"е").trim();
+  const codes = s.match(/\d{8}/g);
+  let a = null, b = null;
+  if(codes && codes.length>=2){ a = artSearch(codes[0],1,true)[0]; b = artSearch(codes[1],1,true)[0]; }
+  else for(const re of CMP_RE){ const m = s.match(re); if(m){ a = cmpSide(m[1]); b = cmpSide(m[2]); if(a && b) break; } }
+  return a && b && a.a!==b.a ? [a, b] : null;
+}
+const cmpNum = (re, unit) => x => { const m = NAME_UP(x.n).match(re); return m ? {t: m[1].replace(".",",")+unit, v: NUM(m[1])} : null; };
+const CMP_ROWS = [
+  /* марку сравниваем ступенью класса: DEKO и Oasis — обе бюджетные, разницы нет */
+  ["Марка", x=>{ const b = BRAND_INFO[brandOf(x.n)]; return b ? {t: b.name+(b.cls?" — "+b.cls:""), v: b.q>=7 ? 3 : b.q>=5 ? 2 : 1} : null; }],
+  ["Мощность", cmpNum(/(\d{2,4})\s*ВТ/, " Вт")],
+  ["Напряжение", cmpNum(/(?<![\d,.])(\d{1,2}(?:[.,]\d)?)\s*В(?![А-ЯA-Z])/, " В")],
+  ["Аккумуляторы", x=>{ const N = NAME_UP(x.n);
+    if(/Б\/А/.test(N)) return {t:"без АКБ и зарядки", v:0};
+    const m = N.match(/(\d)\s*[XХ]\s*(\d(?:[.,]\d)?)\s*АЧ/); if(m) return {t:`${m[1]} × ${m[2].replace(".",",")} А·ч`, v:+m[1]*NUM(m[2])};
+    const o = N.match(/(\d(?:[.,]\d)?)\s*АЧ/); return o ? {t:`${o[1].replace(".",",")} А·ч`, v:NUM(o[1])} : null; }],
+  ["Двигатель", x=>/Б\/Щ/.test(NAME_UP(x.n)) ? {t:"бесщёточный", v:1} : cordlessOf(x.n) ? {t:"щёточный", v:0} : null],
+  ["Удар", cmpNum(/(\d{1,2}(?:[.,]\d)?)\s*ДЖ/, " Дж")],
+  ["Момент", cmpNum(/(\d{2,3})\s*НМ/, " Н·м")],
+  ["Ток", cmpNum(/(\d{3})\s*А(?![А-ЯA-Z·Ч])/, " А")],
+  ["Мощность генератора", cmpNum(/(\d{1,2}(?:[.,]\d)?)\s*КВТ/, " кВт")],
+  ["Давление", cmpNum(/(\d{2,3})\s*БАР/, " бар")],
+  ["Подача", cmpNum(/(\d{2,4})\s*Л\/(?:Ч|МИН)/, "")],
+  ["Размер", cmpNum(/(\d{2,4})\s*ММ/, " мм")],
+  ["Вес", x=>{ const g = gOf(NAME_UP(x.n)); return g ? {t: g>=1000 ? F(g/1000)+" кг" : g+" г", v:g} : null; }],
+  ["Наличие", x=>({t: x.top ? "ТОП — держим" : "—", v: x.top?1:0})],
+  ["Где лежит", x=>({t: artAddr(x)})]
+];
+function compareHTML(p){
+  const [a, b] = p;
+  const rows = CMP_ROWS.map(r=>{ let va = null, vb = null; try{ va = r[1](a); vb = r[1](b); }catch(e){} return [r[0], va, vb]; })
+    .filter(r=>(r[1] || r[2]) && !(r[1] && r[2] && r[1].t==="—" && r[2].t==="—"));
+  const diff = [];
+  const cell = (v, o, name) => {
+    if(!v) return "—";
+    const more = v.v!=null && o && o.v!=null && v.v>o.v && name!=="Где лежит";
+    return more ? `<b>${esc(v.t)}</b>` : esc(v.t);
+  };
+  rows.forEach(r=>{ if(r[0]!=="Где лежит" && r[0]!=="Наличие" && r[1] && r[2] && r[1].v!=null && r[2].v!=null && r[1].v!==r[2].v)
+    diff.push(r[0]==="Марка" ? `класс марки выше у ${r[1].v>r[2].v?"1":"2"} (${esc((r[1].v>r[2].v?r[1]:r[2]).t)})`
+      : `${r[0].toLowerCase()} — больше у ${r[1].v>r[2].v?"1":"2"} (${esc((r[1].v>r[2].v?r[1]:r[2]).t)} против ${esc((r[1].v>r[2].v?r[2]:r[1]).t)})`); });
+  const ta = artType2(a), tb = artType2(b);
+  const td = 'style="padding:6px 6px;border-top:1px solid var(--line,#ddd);vertical-align:top"';
+  return `<div class="block pick">
+      <h3>Сравнение двух позиций</h3>
+      <div style="font-size:14px;color:var(--ink-2)"><b>1</b> — ${esc(a.n)} · ЛМ ${esc(a.a)}<br><b>2</b> — ${esc(b.n)} · ЛМ ${esc(b.a)}</div>
+      ${ta.split(" ")[0]!==tb.split(" ")[0] ? `<div class="note" style="margin-top:8px">Это разные типы товара — сравнивайте по задаче клиента, а не по цифрам.</div>` : ""}
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px;table-layout:fixed">
+        <tr><th ${td} style="width:30%"></th><th ${td}>1</th><th ${td}>2</th></tr>
+        ${rows.map(r=>`<tr><td ${td}>${esc(r[0])}</td><td ${td}>${cell(r[1], r[2], r[0])}</td><td ${td}>${cell(r[2], r[1], r[0])}</td></tr>`).join("")}
+      </table>
+      ${diff.length ? `<div style="font-size:14px;margin-top:8px"><b>Чем отличаются:</b> ${diff.join("; ")}.</div>` : ""}
+      ${[a,b].map((x,i)=>{ const w = firstWhy(x); return w ? `<div class="artwhy" style="margin-top:8px"><b>${i+1}:</b> ${w}</div>${cardMore(x, w)}` : ""; }).join("")}
+    </div>`;
+}
+
+/* --- числа словами: голосовой ввод отдаёт «сверло восемь», «диск сто двадцать пять» --- */
+const NUM_W = {"ноль":0,"один":1,"одна":1,"одно":1,"одного":1,"два":2,"две":2,"двух":2,"три":3,"трех":3,"четыре":4,"четырех":4,
+  "пять":5,"пяти":5,"шесть":6,"шести":6,"семь":7,"семи":7,"восемь":8,"восьми":8,"девять":9,"девяти":9,"десять":10,"десяти":10,
+  "одиннадцать":11,"двенадцать":12,"двенадцати":12,"тринадцать":13,"четырнадцать":14,"пятнадцать":15,"шестнадцать":16,
+  "семнадцать":17,"восемнадцать":18,"восемнадцати":18,"девятнадцать":19,"двадцать":20,"двадцати":20,"тридцать":30,"тридцати":30,
+  "сорок":40,"сорока":40,"пятьдесят":50,"пятидесяти":50,"шестьдесят":60,"семьдесят":70,"восемьдесят":80,"девяносто":90,
+  "сто":100,"ста":100,"двести":200,"триста":300,"четыреста":400,"пятьсот":500,"шестьсот":600,"семьсот":700,"восемьсот":800,"девятьсот":900};
+function numWords(q){
+  const ws = String(q||"").split(/\s+/).filter(Boolean);
+  if(!ws.some(w=>{ const l = w.toLowerCase().replace(/ё/g,"е"); return NUM_W[l]!==undefined || /^полтор[аы]$|^тысяч/.test(l); })) return q;
+  const out = [];
+  for(let i=0;i<ws.length;i++){
+    const l = ws[i].toLowerCase().replace(/ё/g,"е");
+    if(/^полтор[аы]$/.test(l)){ out.push("1,5"); continue; }
+    if(/^тысяч/.test(l)){ out.push("1000"); continue; }
+    if(NUM_W[l]===undefined){ out.push(ws[i]); continue; }
+    /* «сто двадцать пять»: каждое следующее слово — младший разряд */
+    let total = NUM_W[l], last = NUM_W[l];
+    while(i+1<ws.length){
+      const n = ws[i+1].toLowerCase().replace(/ё/g,"е");
+      if(/^тысяч/.test(n)){ total = (total||1)*1000; last = 1000; i++; continue; }
+      const v = NUM_W[n];
+      if(v===undefined || v>=last || (last<10) || (last>=10 && last<20) || (last<100 && v>=10)) break;
+      total += v; last = v; i++;
+    }
+    /* «два с половиной» */
+    if(/^с$/.test((ws[i+1]||"").toLowerCase()) && /^половин/.test((ws[i+2]||"").toLowerCase())){ out.push(String(total)+",5"); i += 2; continue; }
+    out.push(String(total));
+  }
+  return out.join(" ");
+}
+
 function resultsHTML(){
   const q = S.q.trim().toLowerCase();
   let h = "";
@@ -18415,7 +18572,7 @@ function resultsHTML(){
 
   /* не та раскладка: ищем по исправленному и говорим об этом */
   const lay = fixLayout(q);
-  let qx = lay || q;
+  let qx = numWords(lay || q);              /* «сверло восемь» с голоса — «сверло 8» */
   if(lay) h += `<div class="note" style="margin-bottom:10px">Похоже, клавиатура стояла на латинице — ищу «${esc(lay)}».</div>`;
   /* чужая марка: «шуруповёрт бош» — ищем шуруповёрт, а про марку говорим прямо */
   const fb = foreignBrand(qx);
@@ -18440,9 +18597,12 @@ function resultsHTML(){
   ans = svc ? svcAnswers(svc, ans, FOUND.more||[], qx) : svcDemote(qx, ans);
   const dunno = !svc && !offBig && dunnoIntent(qx);
   const absent = offBig ? null : absentFor(qx);
+  /* две позиции названы моделью или кодом — сравнение и есть ответ: общие ответы про «разницу» не нужны */
+  const cmp = offBig ? null : compareFor(qx);
+  if(cmp) ans = [];
 
   const artHTML = () => !arts.length ? "" :
-    `<div class="eyebrow">${arts.bySuffix ? "По последним цифрам кода ЛМ" : arts.loose ? "Товар в зале · по главному слову" : arts.nearSize ? "Такого размера в зале нет · ближайшие" : "Товар в зале · точный адрес"}</div>`
+    `<div class="eyebrow">${arts.bySuffix ? "По последним цифрам кода ЛМ" : arts.model ? "Товар в зале · по модели" : arts.loose ? "Товар в зале · по главному слову" : arts.nearSize ? "Такого размера в зале нет · ближайшие" : "Товар в зале · точный адрес"}</div>`
     + arts.map(x=>{
       /* тот же артикул ещё в других местах зала — адреса в этой же карточке, а не копии карточки */
       const ad0 = artAddr(x);
@@ -18515,13 +18675,14 @@ function resultsHTML(){
   if(fb) h += brandNoHTML(fb);
   if(absent) h += absentHTML(absent);
   if(dunno) h += dunnoHTML(flows);
+  if(cmp) h += compareHTML(cmp);
   if(kind==="lookup")    h += artHTML() + flowHTML() + topHTML();
   else if(kind==="name") h += flowHTML() + artHTML() + topHTML();
   else                   h += topHTML() + flowHTML() + artHTML();
   /* шире запроса: под эту работу (найденный подбор), ещё по теме, тема целиком, ещё спрашивают */
   /* тема запроса задаёт, какой подбор раскрыть: «забор» — сварка и покраска, а не «забор воды» мойкой */
-  const topic = offBig || svc ? null : topicFor(qx);
-  const kitFlow = offBig || svc ? null : topic ? flows.find(k=>topic.f.indexOf(k)>=0) : flows.find(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE);
+  const topic = offBig || svc || cmp ? null : topicFor(qx);
+  const kitFlow = offBig || svc || cmp ? null : topic ? flows.find(k=>topic.f.indexOf(k)>=0) : flows.find(k=>FLOWS[k] && FLOWS[k].zone!==HELPER_ZONE);
   /* товар уже показан выше — основной товар в «под эту работу» не повторяем */
   const noMain = arts.length>0;
   const wkey = wideKey(kitFlow, noMain, topic);
@@ -18536,7 +18697,7 @@ function resultsHTML(){
     refs.forEach(r=>h+=`<button class="card ref" data-ref="${r.id}"><div class="ct">${esc(r.t)}</div></button>`); }
   if(off && !offBig) h += offHTML(false);
 
-  const nothing = !flows.length && !ans.length && !refs.length && !arts.length && !posShown && !topic && !fb && !absent && !dunno;
+  const nothing = !flows.length && !ans.length && !refs.length && !arts.length && !posShown && !topic && !fb && !absent && !dunno && !cmp;
   if(nothing && FOUND.near.length){
     h += `<div class="eyebrow">Точного ответа нет · ближе всего</div>`
       + FOUND.near.map(d => d.t==="flow" ? flowCard(d.id)
