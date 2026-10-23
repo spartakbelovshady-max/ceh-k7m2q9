@@ -290,12 +290,15 @@ li.pickable.on{background:var(--tape);border-radius:2px;padding:2px 4px;margin-l
 .vwhy{font-size:13px;line-height:1.45;color:var(--ink-2);margin:3px 0 0}
 .vwhy b{color:var(--ink)}
 .vnote{font-size:12.5px;color:var(--ink-3);margin-top:7px}
+#updBar{position:fixed;left:12px;right:12px;bottom:12px;z-index:10000;padding:14px 16px;border:0;border-radius:12px;background:var(--ok);color:#fff;font:600 15px/1.3 inherit;box-shadow:0 6px 24px rgba(0,0,0,.25);cursor:pointer}
 details.more{margin-top:6px;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
 details.more summary{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ok);padding:4px 0;list-style:none}
 details.more summary::-webkit-details-marker{display:none}
 details.more summary::before{content:"+ "}
 details.more[open] summary::before{content:"− "}
 details.more p{margin:6px 0 0}
+details.more .msec{margin:12px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3,#8a8f91)}
+.cardk{margin-top:10px}
 details.more p b{color:var(--ink)}
 .must .vwhy, .must details.more{color:#C8CCCE}
 .must .vwhy b, .must details.more p b{color:#fff}
@@ -406,8 +409,9 @@ details.kb.more[open] summary::after{content:"Свернуть ▴"}
 .oneline .ol{font-size:17px;line-height:1.4;font-weight:600}
 .oneline .op{font-family:var(--mono);font-size:11.5px;color:var(--tape);margin-top:8px;letter-spacing:.05em}
 
-.matgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
-@media(max-width:360px){.matgrid{grid-template-columns:repeat(2,1fr)}}
+.matgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:14px}
+@media(max-width:420px){.matgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.matgrid button{min-width:0;overflow-wrap:anywhere}
 .kbshort{background:var(--ink);color:#fff;font-size:16px;line-height:1.45;padding:12px;border-radius:2px;margin-bottom:11px;font-weight:600}
 .kbshort .kbpl{display:block;font-family:var(--mono);font-size:11px;color:var(--tape);font-weight:400;
   margin-top:7px;letter-spacing:.05em}
@@ -13234,10 +13238,29 @@ function artFull(x){
   return out;
 }
 /* Что ещё не сказано на карточке — под «Подробнее» */
+/* Раздел строки по её заголовку: выбор и маркировка, работа, ошибки и безопасность, что взять вместе */
+const MORE_SEC = [
+  ["Ошибки, износ, безопасность", /^(Безопасность|Где ошибаются|Где нельзя|Чем убивают|Когда менять|Износ|Признак|Перегрел|Правило про|Сверло затупилось|Нельзя|Не путайте|.{2,20} путать нельзя|.{2,20} не взаимозаменяемы|Губками не|Боком отрезным|Кромка листа|Зачистным не режут)/i],
+  ["Что взять вместе", /^(С [а-яё]+ (сразу )?берут|Что взять|Под этот квадрат|.{3,30} берут парой)/i],
+  ["Как выбрать и маркировка", /^(Как выбрать|Как отличить|Как подобрать|Маркировка|Точность|Сталь|Из чего|Что сравнивать|Совместимость|Сильная сторона|Строка ГОСТ|Класс|LCD|ПВ|SG\/CD|TPI|Какой мешок|Длина и точность|Бар и литры|Производительность|Регуляторы|Функции|Как понимать|Как читать|Диэлектрическ|VDE|Коронку берут)/i],
+  ["Как работать", /^(Как |Чем |Зачем |Что |Где |Когда |Режимы|Резьбу уплотняют|Бита служит|Разводным ключом|.{2,40} в работе(?![а-яё]))/i]
+];
+function moreSection(l){
+  const h = plainTxt(l).split(/[:—]/)[0].trim();
+  const s = MORE_SEC.find(e=>e[1].test(h));
+  return s ? s[0] : "";
+}
 function cardMore(x, shownHtml, label){
   const shown = plainTxt(shownHtml);
   const rest = artFull(x).filter(l=>shown.indexOf(plainTxt(l).slice(0,40))<0);
-  return rest.length ? `<details class="more"><summary>${label||"Подробнее о товаре"}</summary>${rest.map(l=>`<p>${l}</p>`).join("")}</details>` : "";
+  if(!rest.length) return "";
+  const order = ["", "Как выбрать и маркировка", "Как работать", "Ошибки, износ, безопасность", "Что взять вместе"];
+  const by = new Map(order.map(k=>[k,[]]));
+  rest.forEach(l=>by.get(moreSection(l)).push(l));
+  const used = order.filter(k=>by.get(k).length);
+  const heads = rest.length>=3 && used.filter(k=>k).length>=2;
+  const body = used.map(k=>(heads && k ? `<div class="msec">${k}</div>` : "") + by.get(k).map(l=>`<p>${l}</p>`).join("")).join("");
+  return `<details class="more"><summary>${label||"Подробнее о товаре"}</summary>${body}</details>`;
 }
 /* Первая фраза пояснения — для строки с кодом, остальное под «Подробнее» */
 function firstWhy(x){
@@ -16979,7 +17002,7 @@ const DEEP_MISC = [
  [/^КЛЮЧ Д\/ЭЛЕКТРОШКАФ/, "<b>Ключ для шкафов</b> открывает замки щитков, распределительных и счётных шкафов: треугольник, квадрат, двубородка. Работа в щитке под напряжением — только диэлектрическим инструментом."],
  [/^КЛЮЧ УНИВЕРСАЛ/, "<b>Как работать универсальным ключом</b>: губки подстраиваются под размер сами и держат и гайку, и круглое. Момент держит меньше рожкового и накидного: тугое и прикипевшее срывают ключом точного размера."],
  [/^КЛЮЧ УНИВЕР\. Д\/УШМ/, "<b>Как снять круг с болгарки</b>: нажать стопор шпинделя и открутить фланцевую гайку ключом. Сильно гайку не затягивают — при работе круг затягивается сам; заклинившую гайку не бьют, а откручивают ключом при нажатом стопоре."],
- [/^(ИНВЕРТОРНОЕ ЗАРЯД|ЗАРЯДНОЕ УСТРОЙСТВО АКБ)/, "<b>Как заряжать автомобильный аккумулятор</b>: сначала зажим на плюс, потом на минус, только потом включают в сеть; снимают в обратном порядке. Ток заряда — около 1/10 ёмкости (60 А·ч — 6 А). Заряжают в проветриваемом месте: аккумулятор выделяет водород, искра и сигарета рядом опасны."],
+ [/^(ИНВЕРТОРНОЕ ЗАРЯД|ЗАРЯДНОЕ УСТРОЙСТВО АКБ)/, "<b>Как заряжать автомобильный аккумулятор</b>: аккумулятор машины подключают так — сначала зажим на плюс, потом на минус, только потом включают в сеть; снимают в обратном порядке. Ток заряда — около 1/10 ёмкости (60 А·ч — 6 А). Заряжают в проветриваемом месте: аккумулятор выделяет водород, искра и сигарета рядом опасны."],
  [/^З\/У /, "<b>Как заряжать аккумулятор инструмента</b>: зарядка — только своей платформы и напряжения. Горячий аккумулятор после работы даёт остыть 10–15 минут — зарядка всё равно не начнёт, пока он горячий. Хранят заряженным наполовину, в тепле."],
  [/^КРУГ ШЛИФ\.ФИБР/, "<b>Как работать фибровым кругом</b>: круг ставят на опорную тарелку того же диаметра, работают под углом 15–25°, двигая без остановки. Зачистка сварного шва, ржавчины, окалины, краски. Мягкий круг (фибра) повторяет выпуклую поверхность лучше лепесткового."],
  [/^КРУГ ПОЛИРОВ|^ВОЙЛОК/, "<b>Как полировать кругом</b>: пасту наносят на вращающийся круг касанием бруска пасты; один круг — одна паста, иначе грубое зерно испортит финиш. Деталь держат ниже центра круга — её не вырвет из рук."],
@@ -17174,7 +17197,7 @@ function kbAll(){
 /* Разговорные синонимы: клиент говорит одно, в базе написано другое */
 const SYN = {
  /* живая речь клиента → слова, которыми это названо у нас */
- "закисшая":"смазка проникающая ключ","закисший":"смазка проникающая ключ","прикипел":"смазка проникающая",
+ "закисшая":"смазка проникающая ключ","закисший":"смазка проникающая ключ","прикипел":"смазка проникающая","отбить":"отбивать шнур разметочный","отбивка":"отбивать шнур разметочный",
  "открутить":"ключ головка смазка","отвернуть":"ключ головка","сорвал":"экстрактор ключ грани",
  "слизал":"экстрактор ключ грани","грязь":"мойка высокого давления","помыть":"мойка высокого давления",
  "отмыть":"мойка высокого давления","двор":"мойка высокого давления","фасад":"мойка высокого давления",
@@ -17320,7 +17343,7 @@ REF.unshift(
  note:"Данные собраны из открытых источников и списков авторизованных сервисов. Перед тем как отправить клиента — позвоните и уточните, берут ли они эту марку сейчас."}
 );
 
-const APP_VERSION = "80";
+const APP_VERSION = "81";
 const APP_DATE = "23.10.2026";
 
 /* ============ ЧЕК-ЛИСТ ПЕРЕД КАССОЙ ============ */
@@ -18902,28 +18925,89 @@ function buildDocs(){
   QUICK.forEach((x,i)=>A("quick", i, {q:x[0], a:esc(x[1]), p:"", src:"Короткий ответ"}, [[x[0],5],[x[1],2]]));
   getCases().forEach((c,i)=>A("case", i, {q:c.t, a:esc(c.r), p:"", src:"Кейс отдела"}, [[c.t,5],[c.r,2]]));
   MATERIALS.forEach(m=>{ docs.push({t:"mat", id:m[1], row:m, fields:[[m[0],5],[m[1],3]]}); });
+
   return docs;
 }
 
+/* Знания карточек как ответы поиска: строки подробных правил (deep) с жирным заголовком
+   «Как резать стекло», «Когда менять угольные щётки» — один ответ на заголовок, коды из зала под ним */
+let CARD_KNOW = null, CK = null;
+/* шаг разбора: n позиций каталога за раз — в браузере частями между кадрами, чтобы ввод не тормозил */
+function cardKnowStep(n){
+  if(CARD_KNOW) return true;
+  if(!CK) CK = {i:0, list:artList(), rules:MARK_RULES.filter(r=>r.deep && !r.set), groups:new Map(), seen:new Set()};
+  const end = Math.min(CK.list.length, CK.i + n);
+  for(; CK.i<end; CK.i++){
+    const x = CK.list[CK.i];
+    if(CK.seen.has(x.n)) continue; CK.seen.add(x.n);
+    const up = nameAlias(x._U || String(x.n).toUpperCase());
+    CK.rules.forEach(r=>{
+      if(r.when && !r.when.test(up)) return;
+      const m = up.match(r.re); if(!m) return;
+      let t = ""; try{ t = r.say(m); }catch(e){ t = ""; }
+      const hm = t && t.match(/^<b>([^<]{6,90})<\/b>/); if(!hm) return;
+      const head = hm[1].replace(/[:.]\s*$/,"").trim();
+      const key = head.toLowerCase().replace(/ё/g,"е").replace(/\d+(?:[.,]\d+)?\s*(?:кг|мм|г)?/g,"").replace(/\s+/g," ").trim();
+      let g = CK.groups.get(key); if(!g) CK.groups.set(key, g = {head, texts:new Map(), items:[], names:new Map()});
+      g.texts.set(t, (g.texts.get(t)||0)+1);
+      if(!g.items.some(y=>y.a===x.a)) g.items.push(x);
+      const w = up.replace(/Ё/g,"Е").split(/[ .,(\/]/)[0].toLowerCase();
+      g.names.set(w, (g.names.get(w)||0)+1);
+    });
+  }
+  if(CK.i < CK.list.length) return false;
+  CARD_KNOW = [...CK.groups.values()].map(g=>{
+    const text = [...g.texts.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+    const items = g.items.slice().sort((a,b)=>(b.top?1:0)-(a.top?1:0)).slice(0,3);
+    return {head: g.texts.size>1 ? g.head.replace(/\s*\d+(?:[.,]\d+)?\s*(?:кг|мм|г)(?![а-яa-z])/g,"") : g.head, text, items, types:[...g.names.keys()].join(" "), n: g.items.length};
+  });
+  CK = null;
+  return true;
+}
+function cardKnowledge(){ cardKnowStep(1e9); return CARD_KNOW; }
+/* ответы из карточек — отдельные документы поиска, дописываются в готовый индекс */
+function cardDocs(){
+  const plain = s => String(s||"").replace(/<[^>]+>/g," ");
+  return cardKnowledge().map((k,i)=>({t:"ans", id:"card:"+i, _card:true,
+    ans:{kind:"card", q:k.head, p:"",
+      src:"Из карточек товара"+(k.n>1?` · ${k.n} ${k.n%10===1&&k.n%100!==11?"позиция":k.n%10>=2&&k.n%10<=4&&(k.n%100<10||k.n%100>=20)?"позиции":"позиций"}`:""),
+      a: k.text.replace(/^<b>[^<]*<\/b>\s*[:—–-]?\s*/,"") + (k.items.length ? `<div class="cardk">${k.items.map(wideLine).join("")}</div>` : "")},
+    fields:[[k.head,5],[k.types,2],[plain(k.text),1]]}));
+}
+let CARD_IN_IDX = false;
+function addCardDocs(){
+  if(CARD_IN_IDX || !SIDX || !CARD_KNOW) return;
+  cardDocs().forEach(d=>{ const di = SDOCS.length; SDOCS.push(d); indexDoc(SIDX, d, di); });
+  SDOCS._nCard = CARD_KNOW.length; CARD_IN_IDX = true;
+}
+/* в браузере — частями по 150 позиций, в проверках вне браузера — сразу */
+function cardKnowLater(){
+  if(CARD_KNOW){ addCardDocs(); return; }
+  if(cardKnowStep(150)) addCardDocs(); else setTimeout(cardKnowLater, 30);
+}
 let SIDX=null, SDOCS=null;
-function resetSearchIndex(){ SIDX=null; SDOCS=null; }
+function resetSearchIndex(){ SIDX=null; SDOCS=null; CARD_IN_IDX=false; }
+function indexDoc(idx, d, di){
+  const best = new Map();
+  d.fields.forEach(f=>{
+    stemsOf(f[0]).forEach(st=>{ if(!best.has(st) || best.get(st)<f[1]) best.set(st,f[1]); });
+  });
+  best.forEach((w,st)=>{
+    const k = st.slice(0,4);
+    let a = idx.get(k);
+    if(!a) idx.set(k, a=[]);
+    a.push([di,w,st]);
+  });
+}
 function searchIndex(){
   if(SIDX) return SIDX;
   SDOCS = buildDocs();
   const idx = new Map();
-  SDOCS.forEach((d,di)=>{
-    const best = new Map();
-    d.fields.forEach(f=>{
-      stemsOf(f[0]).forEach(st=>{ if(!best.has(st) || best.get(st)<f[1]) best.set(st,f[1]); });
-    });
-    best.forEach((w,st)=>{
-      const k = st.slice(0,4);
-      let a = idx.get(k);
-      if(!a) idx.set(k, a=[]);
-      a.push([di,w,st]);
-    });
-  });
-  return (SIDX=idx);
+  SDOCS.forEach((d,di)=>indexDoc(idx, d, di));
+  SIDX = idx;
+  if(typeof WIDE_SYNC!=="undefined" && WIDE_SYNC) cardKnowledge();   /* проверки вне браузера — ответы карточек сразу */
+  addCardDocs();
+  return SIDX;
 }
 
 /* Опечатка в одну букву: «перфаратор», «шурупаверт» */
@@ -18957,7 +19041,7 @@ function searchAll(q){
   const res = {flows:[], answers:[], refs:[], mats:[], near:[], best:0,
                terms:groups.map(g=>g.st), unknown:[], weak:[], fixes:{}};
   if(!groups.length) return res;
-  const idx = searchIndex(), N = SDOCS.length;
+  const idx = searchIndex(), N = SDOCS.length - (SDOCS._nCard||0);   /* ответы из карточек не меняют редкость слов */
   const acc = new Map();
   let totalW = 0;
   groups.forEach(g=>{
@@ -18966,12 +19050,14 @@ function searchAll(q){
     /* Редкость считаем по каждой форме слова отдельно и только по заголовкам:
        «возврат» в заголовках встречается дважды, «гарантия» — десяток раз */
     const idf = list => {
-      const docs = new Set(); list.forEach(p=>{ if(p[1]>=3) docs.add(p[0]); });
+      const docs = new Set(); list.forEach(p=>{ if(p[1]>=3 && !SDOCS[p[0]]._card) docs.add(p[0]); });
       const n = docs.size || new Set(list.map(p=>p[0])).size;
       return 0.2 + 0.8*Math.log(1 + N/Math.max(1,n))/Math.log(1 + N);
     };
     let gw = 0;
-    const take = (list, k) => { if(!list.length) return; const w = idf(list); if(w>gw) gw = w;
+    /* ответы из карточек находятся, но не меняют вес слова и порог для остальной выдачи */
+    const take = (list, k) => { if(!list.length) return;
+      const base = list.filter(p=>!SDOCS[p[0]]._card), w = idf(base.length ? base : list); if(w>gw) gw = w;
       list.forEach(p=>{
         const v = p[1]*k*w, b = best.get(p[0]);
         if(b===undefined || b[0]<v) best.set(p[0], [v, p[1]]);   /* покрытие — по полю, где нашлось слово */
@@ -18999,9 +19085,12 @@ function searchAll(q){
   });
   res.fuzzyOnly = groups.every(g=>g.fuzzy || res.unknown.indexOf(g.st)>=0) && groups.some(g=>g.fuzzy);
   const ranked=[];
+  /* ответ из карточки товара уступает ответам базы; на запрос без вопроса («домкрат») — уходит вниз, первым идёт товар */
+  const askQ = /(^|\s)(как|чем|когда|зачем|почему|можно|какой|какая|какое|какие|что|где|сколько|нужно|надо)(\s|$)/i.test(String(q)), howQ = /(^|\s)(как|когда)(\s|$)/i.test(String(q));   /* «как …» — ответ карточки, «чем …», «какой …» — выбор, там первыми ответы базы */
   acc.forEach((c,di)=>{
     const cover = totalW ? Math.min(1, c.w/totalW) : 0.3;
-    ranked.push([SDOCS[di], c.s*(0.3+0.7*cover)*(cover>0.999?1.3:1)]);
+    const d = SDOCS[di], cardK = d.t==="ans" && d.ans.kind==="card" ? (howQ ? (cover>0.999 ? 1 : 0.8) : askQ ? 0.4 : 0.35) : 1;   /* заголовок карточки покрыл весь вопрос — он и есть ответ */
+    ranked.push([d, c.s*(0.3+0.7*cover)*(cover>0.999?1.3:1)*cardK]);
   });
   ranked.sort((a,b)=>b[1]-a[1]);
   if(ranked.length) res.best = ranked[0][1];
@@ -19370,7 +19459,7 @@ function compareHTML(p){
       <h3>Сравнение двух позиций</h3>
       <div style="font-size:14px;color:var(--ink-2)"><b>1</b> — ${esc(a.n)} · ЛМ ${esc(a.a)}<br><b>2</b> — ${esc(b.n)} · ЛМ ${esc(b.a)}</div>
       ${ta.split(" ")[0]!==tb.split(" ")[0] ? `<div class="note" style="margin-top:8px">Это разные типы товара — сравнивайте по задаче клиента, а не по цифрам.</div>` : ""}
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px;table-layout:fixed">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px;table-layout:fixed;overflow-wrap:anywhere">
         <tr><th ${td} style="width:30%"></th><th ${td}>1</th><th ${td}>2</th></tr>
         ${rows.map(r=>`<tr><td ${td}>${esc(r[0])}</td><td ${td}>${cell(r[1], r[2], r[0])}</td><td ${td}>${cell(r[2], r[1], r[0])}</td></tr>`).join("")}
       </table>
@@ -20203,7 +20292,7 @@ function queryKind(q, arts){
   const verb = w => w.length>=5 && /(ть|ти|чь|ться|тись|ют|ят|ется|ются|ится|ятся|ался|алась|ался|ился|илась)$/.test(w);
   if(ws.some(w=>ASK_W.has(w) || verb(w) || ASK_P.some(p=>w.indexOf(p)===0))) return "ask";
   /* жалоба и «чего нет» — тоже вопрос: «котёл не работает от генератора», «генератор две фазы, нет нуля» */
-  if(ws.some((w,i)=>(w==="не" && ws[i+1]) || w==="нет" || w==="почему") || /(ет|ит|ут|ют|ат|ят)$/.test(ws[ws.indexOf("не")+1]||"")) return "ask";
+  if(ws.some((w,i)=>(w==="не" && ws[i+1]) || w==="нет" || w==="почему") || (ws.indexOf("не")>=0 && /(ет|ит|ут|ют|ат|ят)$/.test(ws[ws.indexOf("не")+1]||""))) return "ask";
   if(arts.length && arts.full && (ws.indexOf("где")>=0 || /\d/.test(q))) return "lookup";
   return queryGroups(q).length>=4 ? "ask" : "name";
 }
@@ -21383,12 +21472,30 @@ if(fv) fv.textContent = "Версия " + APP_VERSION + " · " + APP_DATE + " ·
 render();
 
 /* Индексы поиска строим заранее, пока продавец смотрит на экран, — тогда первая буква не тормозит */
-setTimeout(()=>{ try{ searchIndex(); artIndex(); }catch(e){} setTimeout(()=>{ try{ platforms(); modelKeys(); }catch(e){} }, 400); }, 1200);
+setTimeout(()=>{ try{ searchIndex(); artIndex(); }catch(e){} setTimeout(()=>{ try{ platforms(); modelKeys(); }catch(e){} setTimeout(()=>{ try{ cardKnowLater(); }catch(e){} }, 400); }, 400); }, 1200);
 
 </script>
 
 <script>
-if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+/* Новая версия: проверяем при открытии и раз в час, когда есть сеть. Новый service worker
+   встаёт сам (skipWaiting), а страница остаётся старой — внизу плашка «Обновить», без перезагрузки посреди поиска */
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>{
+  const hadCtrl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js").then(reg=>{
+    const check = ()=>{ if(navigator.onLine) reg.update().catch(()=>{}); };
+    setTimeout(check, 4000);
+    setInterval(check, 60*60*1000);
+    document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") check(); });
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+    if(!hadCtrl || document.getElementById("updBar")) return;
+    const b = document.createElement("button");
+    b.id = "updBar"; b.type = "button";
+    b.textContent = "Вышла новая версия ЦЕХ — нажмите, чтобы обновить";
+    b.onclick = ()=>location.reload();
+    document.body.appendChild(b);
+  });
+}); }
 let deferredPrompt=null;
 window.addEventListener("beforeinstallprompt", e=>{
   e.preventDefault(); deferredPrompt=e;
